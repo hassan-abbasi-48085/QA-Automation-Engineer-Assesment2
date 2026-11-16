@@ -1,0 +1,39 @@
+{
+  "name": "kafka-qa-assessment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kafka + Node-RED tests: Gherkin features (Cucumber + Chai) and Mocha + Chai specs for the QA Automation assessment",
+  "type": "module",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "scripts": {
+    "env:up": "docker compose up -d --build --wait",
+    "env:down": "docker compose down -v",
+    "test": "npm run test:bdd && npm run test:mocha",
+    "test:bdd": "cucumber-js",
+    "test:bdd:producer": "cucumber-js --tags @KAFKA-P-01",
+    "test:bdd:consumer": "cucumber-js --tags @KAFKA-C-01",
+    "test:bdd:dry": "cucumber-js --dry-run --format summary",
+    "test:mocha": "mocha \"test/**/*.int.test.js\"",
+    "test:producer": "mocha test/producer.int.test.js",
+    "test:consumer": "mocha test/consumer.int.test.js",
+    "test:unit": "mocha \"test/unit/**/*.test.js\"",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write . && eslint --fix ."
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "11.3.0",
+    "@cucumber/pretty-formatter": "1.0.1",
+    "@eslint/js": "9.39.5",
+    "chai": "6.3.0",
+    "eslint": "9.39.5",
+    "globals": "16.5.0",
+    "kafkajs": "2.2.4",
+    "mocha": "11.8.0",
+    "prettier": "3.10.1"
+  },
+  "overrides": {
+    "@cucumber/messages": "27.2.0"
+  }
+}

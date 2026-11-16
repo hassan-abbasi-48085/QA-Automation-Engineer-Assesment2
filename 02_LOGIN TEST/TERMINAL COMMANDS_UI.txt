@@ -1,0 +1,4 @@
+Headed, run directly	npx bddgen; npx playwright test --headed
+UI mode (pick tests, watch, time-travel)	npx bddgen; npx playwright test --ui
+Step through with the inspector	npx bddgen; npx playwright test --debug
+Smoke tests only, headed	npx bddgen --tags @smoke; npx playwright test --headed

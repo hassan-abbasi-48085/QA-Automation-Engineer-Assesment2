@@ -1,0 +1,9 @@
+{
+  "name": "kafka-qa-nodered-userdir",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node-RED userDir for the Kafka QA assessment flows",
+  "dependencies": {
+    "kafkajs": "2.2.4"
+  }
+}

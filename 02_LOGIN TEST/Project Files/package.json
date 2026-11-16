@@ -1,0 +1,20 @@
+{
+  "name": "qa-task2-login",
+  "version": "2.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "Task 2: login test cases written in Gherkin and automated with Playwright + playwright-bdd using the Page Object Model",
+  "scripts": {
+    "bddgen": "bddgen",
+    "test": "bddgen && playwright test",
+    "test:headed": "bddgen && playwright test --headed",
+    "test:smoke": "bddgen --tags @smoke && playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "playwright-bdd": "9.2.1"
+  }
+}

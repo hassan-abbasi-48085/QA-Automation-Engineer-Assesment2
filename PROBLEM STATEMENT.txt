@@ -1,0 +1,37 @@
+QA Automation Engineer Assessment
+
+ 
+
+Task 1: Automate API testing.
+
+Write an automation test using postman or any tool of your choice.
+
+Endpoint: https://gorest.co.in/
+
+Resource: POST /public/v2/users
+
+Run a http POST on the above endpoint.
+
+Create a new user and assert if you can find the newly created user in the Get user endpoint (https://gorest.co.in/public/v2/users/7014306)
+
+Assert to check for the presence of the various properties in the returned object
+
+ 
+
+Task 2: UI Automation testing.
+
+Choose any webpage of your choice.
+
+Write a manual test case with at 3 test scenarios
+
+Automate one of the above test scenario using any tool of your choice.
+
+ 
+
+Task 3: Kafka Automation testing.  (Optional)
+
+Write a manual test case with at 6 test scenarios that would test Kafka producer and consumer.
+
+Automate one of the above test scenarios related to producer and another one for consumer using any tool of your choice.
+
+Ideal candidate should have experience in writing automation tests using (mocha/chai +  Kafka with Node-Red framework)

@@ -1,0 +1,9 @@
+QA Automation Engineer Assessment
+
+Task 3: Kafka Automation testing.  (Optional)
+
+Write a manual test case with at 6 test scenarios that would test Kafka producer and consumer.
+
+Automate one of the above test scenarios related to producer and another one for consumer using any tool of your choice.
+
+Ideal candidate should have experience in writing automation tests using (mocha/chai +  Kafka with Node-Red framework)

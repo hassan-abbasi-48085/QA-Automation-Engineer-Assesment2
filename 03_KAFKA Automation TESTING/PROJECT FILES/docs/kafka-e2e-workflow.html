@@ -1,0 +1,1807 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kafka E2E Workflow</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --surface: #ffffff;
+        --surface-2: #f0efeb;
+        --text: #1c1c1a;
+        --muted: #5f5e58;
+        --border: #dedcd5;
+        --accent: #2f5fd0;
+        --accent-soft: #e6ecfb;
+        --ok: #1f7a4a;
+        --ok-soft: #e3f3ea;
+        --warn: #9a5b00;
+        --warn-soft: #fbefdc;
+        --bad: #b3261e;
+        --bad-soft: #fbe5e3;
+        --code-bg: #1e1f22;
+        --code-text: #e6e6e3;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #141413;
+          --surface: #1d1d1b;
+          --surface-2: #262624;
+          --text: #ecebe6;
+          --muted: #a6a59e;
+          --border: #34332f;
+          --accent: #8eaaf5;
+          --accent-soft: #23304f;
+          --ok: #6fcf97;
+          --ok-soft: #1c3527;
+          --warn: #f0b764;
+          --warn-soft: #3a2c15;
+          --bad: #f28b82;
+          --bad-soft: #3d1f1c;
+          --code-bg: #0f0f0e;
+          --code-text: #e6e6e3;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #141413;
+        --surface: #1d1d1b;
+        --surface-2: #262624;
+        --text: #ecebe6;
+        --muted: #a6a59e;
+        --border: #34332f;
+        --accent: #8eaaf5;
+        --accent-soft: #23304f;
+        --ok: #6fcf97;
+        --ok-soft: #1c3527;
+        --warn: #f0b764;
+        --warn-soft: #3a2c15;
+        --bad: #f28b82;
+        --bad-soft: #3d1f1c;
+        --code-bg: #0f0f0e;
+        --code-text: #e6e6e3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 32px 16px 80px;
+      }
+      header.hero {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 24px;
+        margin-bottom: 8px;
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: clamp(28px, 4vw, 38px);
+        line-height: 1.15;
+        margin: 6px 0 10px;
+      }
+      h2 {
+        font-size: 24px;
+        margin: 48px 0 12px;
+        padding-top: 8px;
+        scroll-margin-top: 16px;
+      }
+      h2 .num {
+        color: var(--muted);
+        font-weight: 500;
+        margin-right: 8px;
+      }
+      h3 {
+        font-size: 18px;
+        margin: 28px 0 8px;
+      }
+      p {
+        margin: 0 0 12px;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 17px;
+        max-width: 760px;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .chip {
+        font-size: 13px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .chip.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+        border-color: transparent;
+        font-weight: 600;
+      }
+      nav.toc {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin: 24px 0 0;
+      }
+      nav.toc ol {
+        margin: 0;
+        padding-left: 20px;
+        columns: 2;
+        column-gap: 32px;
+      }
+      nav.toc a {
+        color: var(--text);
+        text-decoration: none;
+      }
+      nav.toc a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin: 12px 0;
+      }
+      blockquote {
+        margin: 12px 0;
+        padding: 16px 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--accent);
+        border-radius: 8px;
+      }
+      blockquote p:last-child {
+        margin: 0;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 12px 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      th {
+        background: var(--surface-2);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      code {
+        font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+        font-size: 0.9em;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 14px 16px;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-size: 13.5px;
+        line-height: 1.55;
+        margin: 10px 0 16px;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        color: inherit;
+        font-size: inherit;
+      }
+      .c {
+        color: #8b8b85;
+      }
+      .g-kw {
+        color: #c792ea;
+        font-weight: 700;
+      }
+      .g-step {
+        color: #82aaff;
+        font-weight: 600;
+      }
+      .g-str {
+        color: #c3e88d;
+      }
+      .g-tag {
+        color: #ffcb6b;
+      }
+      .g-table {
+        color: #89ddff;
+      }
+      .g-ph {
+        color: #f78c6c;
+      }
+      .pass {
+        color: #6fcf97;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 1px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .badge.auto {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .badge.manual {
+        background: var(--surface-2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .badge.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .stat .v {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--ok);
+        line-height: 1.1;
+      }
+      .stat .l {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      ol.steps {
+        padding-left: 0;
+        list-style: none;
+        counter-reset: s;
+      }
+      ol.steps > li {
+        counter-increment: s;
+        position: relative;
+        padding: 0 0 14px 44px;
+      }
+      ol.steps > li::before {
+        content: counter(s);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 14px;
+        display: grid;
+        place-items: center;
+      }
+      details {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin: 8px 0;
+      }
+      summary {
+        cursor: pointer;
+        padding: 12px 16px;
+        font-weight: 600;
+        list-style: none;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::before {
+        content: '▸';
+        color: var(--muted);
+        transition: transform 0.15s;
+      }
+      details[open] summary::before {
+        transform: rotate(90deg);
+      }
+      details .body {
+        padding: 0 16px 14px 36px;
+        font-size: 15px;
+      }
+      details .body ul {
+        margin: 4px 0 10px;
+        padding-left: 18px;
+      }
+      .diagram {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        margin: 12px 0;
+        overflow-x: auto;
+      }
+      .diagram svg {
+        display: block;
+        width: 100%;
+        min-width: 680px;
+        height: auto;
+      }
+      .diagram .box {
+        fill: var(--surface-2);
+        stroke: var(--border);
+        stroke-width: 1.5;
+      }
+      .diagram .group {
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 1;
+        stroke-dasharray: 5 4;
+      }
+      .diagram .topic {
+        fill: var(--accent-soft);
+        stroke: var(--accent);
+        stroke-width: 1.5;
+      }
+      .diagram .dlq {
+        fill: var(--bad-soft);
+        stroke: var(--bad);
+        stroke-width: 1.5;
+      }
+      .diagram .test {
+        fill: var(--ok-soft);
+        stroke: var(--ok);
+        stroke-width: 1.5;
+      }
+      .diagram text {
+        fill: var(--text);
+        font:
+          13px system-ui,
+          sans-serif;
+      }
+      .diagram .t-small {
+        fill: var(--muted);
+        font-size: 11.5px;
+      }
+      .diagram .t-label {
+        fill: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      .diagram .arrow {
+        stroke: var(--text);
+        stroke-width: 1.5;
+        fill: none;
+        marker-end: url(#ah);
+      }
+      .diagram .arrow.t {
+        stroke: var(--ok);
+        stroke-dasharray: 5 4;
+        marker-end: url(#aht);
+      }
+      .diagram .ahead {
+        fill: var(--text);
+      }
+      .diagram .ahead.t {
+        fill: var(--ok);
+      }
+      .note {
+        border-left: 4px solid var(--warn);
+        background: var(--warn-soft);
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 15px;
+      }
+      footer {
+        margin-top: 56px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 14px;
+      }
+      @media (max-width: 640px) {
+        nav.toc ol {
+          columns: 1;
+        }
+        h2 {
+          font-size: 21px;
+        }
+      }
+      @media print {
+        details {
+          break-inside: avoid;
+        }
+        details:not([open]) .body {
+          display: block;
+        }
+        pre {
+          white-space: pre-wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="hero">
+        <div class="eyebrow">Task 3 · Kafka Automation Testing</div>
+        <h1>Kafka producer and consumer testing with Node-RED, Gherkin, Mocha and Chai</h1>
+        <p class="lede">
+          The complete end-to-end workflow: the problem statement, how it was solved, how the code is structured, how to
+          run it, and the test results from the latest run.
+        </p>
+        <div class="meta">
+          <span class="chip ok">All tests passing</span>
+          <span class="chip">6 scenarios in Gherkin</span>
+          <span class="chip">2 automated scenarios (Cucumber + Mocha)</span>
+          <span class="chip">15 unit tests</span>
+          <span class="chip">Last run: 14 Nov 2026</span>
+        </div>
+        <nav class="toc" aria-label="Contents">
+          <ol>
+            <li><a href="#problem">Problem statement</a></li>
+            <li><a href="#solution">How we solved it</a></li>
+            <li><a href="#architecture">Architecture and event contract</a></li>
+            <li><a href="#e2e">End-to-end workflow</a></li>
+            <li><a href="#scenarios">Manual test scenarios</a></li>
+            <li><a href="#gherkin">Gherkin test cases</a></li>
+            <li><a href="#automation">Automated tests</a></li>
+            <li><a href="#structure">Code structure</a></li>
+            <li><a href="#run">How to run</a></li>
+            <li><a href="#results">Test results</a></li>
+            <li><a href="#limits">Known limitations</a></li>
+          </ol>
+        </nav>
+      </header>
+
+      <!-- 1 -->
+      <section id="problem">
+        <h2><span class="num">1</span>Problem statement</h2>
+        <blockquote>
+          <p><strong>Task 3: Kafka Automation testing (Optional)</strong></p>
+          <p>Write a manual test case with at least 6 test scenarios that would test Kafka producer and consumer.</p>
+          <p>
+            Automate one of the above test scenarios related to producer and another one for consumer using any tool of
+            your choice.
+          </p>
+          <p>
+            Ideal candidate should have experience in writing automation tests using (mocha/chai + Kafka with Node-Red
+            framework).
+          </p>
+        </blockquote>
+        <p>The task has three deliverables, plus the follow-up request to write the test cases in Gherkin:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Requirement</th>
+                <th>Delivered</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>At least 6 manual test scenarios for the Kafka producer and consumer</td>
+                <td>
+                  KAFKA-P-01..03 and KAFKA-C-01..03, written in Gherkin in <code>features/producer.feature</code> and
+                  <code>features/consumer.feature</code>, with shell steps and observed results in
+                  <code>docs/manual-test-scenarios.md</code>
+                </td>
+                <td><span class="badge ok">Done</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Automate one producer scenario</td>
+                <td>
+                  KAFKA-P-01: Gherkin scenario <code>@KAFKA-P-01</code> (Cucumber + Chai) and
+                  <code>test/producer.int.test.js</code> (Mocha + Chai)
+                </td>
+                <td><span class="badge ok">Done</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Automate one consumer scenario</td>
+                <td>
+                  KAFKA-C-01: Gherkin scenario <code>@KAFKA-C-01</code> (Cucumber + Chai) and
+                  <code>test/consumer.int.test.js</code> (Mocha + Chai)
+                </td>
+                <td><span class="badge ok">Done</span></td>
+              </tr>
+              <tr>
+                <td>+</td>
+                <td>Test cases also in Gherkin</td>
+                <td>All 6 scenarios as Gherkin features; the automated ones run as executable specifications</td>
+                <td><span class="badge ok">Done</span></td>
+              </tr>
+              <tr>
+                <td>+</td>
+                <td>Stack: Mocha/Chai + Kafka + Node-RED</td>
+                <td>
+                  Cucumber 11 + Mocha 11 + Chai 6 + kafkajs 2.2.4, a real Apache Kafka 3.9.1 broker, and Node-RED 4.0.9
+                  flows
+                </td>
+                <td><span class="badge ok">Done</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section id="solution">
+        <h2><span class="num">2</span>How we solved it</h2>
+        <p>
+          To test a producer and a consumer we needed both to exist. So the solution builds a small, realistic
+          <strong>order-processing system</strong> in Node-RED, runs it against a <strong>real Kafka broker</strong> in
+          Docker, and then tests it manually and automatically.
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Created a reproducible environment.</strong> <code>docker-compose.yml</code> starts a single-node
+            Kafka broker (KRaft mode, no ZooKeeper), a one-shot <code>kafka-init</code> job that creates the three
+            topics (auto-create is disabled, so typos fail loudly), and a Node-RED container. One command brings it all
+            up and waits until each service is healthy.
+          </li>
+          <li>
+            <strong>Built the system under test in Node-RED.</strong> The <em>Order producer</em> tab exposes
+            <code>POST /orders</code>, validates the order, wraps it in an <code>OrderCreated</code> event and publishes
+            it to Kafka. The <em>Order consumer</em> tab reads those events, computes totals, and writes an
+            <code>OrderProcessed</code> result, or an <code>OrderRejected</code> record to a dead-letter topic when the
+            input is bad.
+          </li>
+          <li>
+            <strong>Defined a single event contract.</strong> <code>node-red/lib/order-event.js</code> holds the
+            validation rules, the event envelope and the result calculation. Both flows use it, and it also has its own
+            unit tests.
+          </li>
+          <li>
+            <strong>Wrote 6 scenarios, in Gherkin and as manual test cases,</strong> that cover the happy path,
+            validation, broker outage, malformed messages and consumer restart. Each has preconditions, test data, steps
+            and exact expected results, and each was executed and its observed results recorded.
+          </li>
+          <li>
+            <strong>Automated one producer and one consumer scenario</strong> twice: as Gherkin scenarios run by
+            Cucumber with Chai step definitions, and as plain Mocha + Chai specs. Both share the same client objects.
+            Each test uses an <em>independent</em> kafkajs client as the oracle, so the test never trusts the system
+            under test to grade itself.
+          </li>
+          <li>
+            <strong>Made the tests reliable.</strong> Each run has a unique ID and its own consumer group. Subscribers
+            are confirmed ready before anything is published, every wait is bounded with a clear failure message, and
+            every client is cleaned up afterwards.
+          </li>
+          <li>
+            <strong>Added quality gates.</strong> The project has ESLint and Prettier, unit tests for the contract, and
+            a GitHub Actions pipeline (<code>ci/github-actions-e2e.yml</code>) that runs lint, the unit tests and the
+            full integration suite.
+          </li>
+        </ol>
+
+        <h3>Key design decisions</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Decision</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Node-RED function nodes using <code>kafkajs</code>, not a palette Kafka node</td>
+                <td>
+                  The community Kafka nodes differ in their retry, commit and shutdown behaviour. A known client makes
+                  every expected result exact and reviewable, with only one dependency.
+                </td>
+              </tr>
+              <tr>
+                <td>The offset is committed only after the result or DLQ write succeeds</td>
+                <td>Gives at-least-once delivery: a crash can never silently skip a record.</td>
+              </tr>
+              <tr>
+                <td>Bad messages go to a dead-letter topic</td>
+                <td>One poison message cannot block the partition, and the consumer moves on to the next record.</td>
+              </tr>
+              <tr>
+                <td>Expected values are literals in the tests</td>
+                <td>
+                  <code>totalAmount: 71.8</code> is written out by hand rather than recomputed with the code under test,
+                  so a bug in the calculation cannot hide itself.
+                </td>
+              </tr>
+              <tr>
+                <td>Real broker, not a mock</td>
+                <td>
+                  Partitions, offsets, consumer groups and acks are real, which is what Kafka testing is actually about.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section id="architecture">
+        <h2><span class="num">3</span>Architecture and event contract</h2>
+        <div
+          class="diagram"
+          role="img"
+          aria-label="Architecture: client to Node-RED producer to Kafka orders topic to Node-RED consumer to processed and DLQ topics, with test clients"
+        >
+          <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path class="ahead" d="M0,0 L10,5 L0,10 z" />
+              </marker>
+              <marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path class="ahead t" d="M0,0 L10,5 L0,10 z" />
+              </marker>
+            </defs>
+
+            <!-- groups -->
+            <rect class="group" x="150" y="20" width="250" height="250" rx="10" />
+            <text class="t-label" x="164" y="42">NODE-RED :1880</text>
+            <rect class="group" x="430" y="20" width="250" height="250" rx="10" />
+            <text class="t-label" x="444" y="42">KAFKA BROKER :9092</text>
+            <rect class="group" x="710" y="20" width="250" height="250" rx="10" />
+            <text class="t-label" x="724" y="42">NODE-RED :1880</text>
+
+            <!-- client -->
+            <rect class="box" x="10" y="100" width="115" height="60" rx="8" />
+            <text x="67" y="125" text-anchor="middle">Client</text>
+            <text class="t-small" x="67" y="143" text-anchor="middle">curl / test</text>
+
+            <!-- producer -->
+            <rect class="box" x="170" y="60" width="210" height="44" rx="8" />
+            <text x="275" y="87" text-anchor="middle">http in: POST /orders</text>
+            <rect class="box" x="170" y="125" width="210" height="44" rx="8" />
+            <text x="275" y="152" text-anchor="middle">Validate &amp; build event</text>
+            <rect class="box" x="170" y="190" width="210" height="44" rx="8" />
+            <text x="275" y="211" text-anchor="middle">Publish to Kafka</text>
+            <text class="t-small" x="275" y="226" text-anchor="middle">kafkajs · acks=all · key=orderId</text>
+            <path class="arrow" d="M275,104 V123" />
+            <path class="arrow" d="M275,169 V188" />
+
+            <!-- topics -->
+            <rect class="topic" x="450" y="80" width="210" height="50" rx="25" />
+            <text x="555" y="102" text-anchor="middle">qa.orders.v1</text>
+            <text class="t-small" x="555" y="119" text-anchor="middle">OrderCreated</text>
+            <rect class="topic" x="450" y="150" width="210" height="50" rx="25" />
+            <text x="555" y="172" text-anchor="middle">qa.orders.processed.v1</text>
+            <text class="t-small" x="555" y="189" text-anchor="middle">OrderProcessed</text>
+            <rect class="dlq" x="450" y="210" width="210" height="50" rx="25" />
+            <text x="555" y="232" text-anchor="middle">qa.orders.dlq.v1</text>
+            <text class="t-small" x="555" y="249" text-anchor="middle">OrderRejected</text>
+
+            <!-- consumer -->
+            <rect class="box" x="730" y="60" width="210" height="44" rx="8" />
+            <text x="835" y="87" text-anchor="middle">inject (once): start</text>
+            <rect class="box" x="730" y="125" width="210" height="80" rx="8" />
+            <text x="835" y="150" text-anchor="middle">Kafka consumer:</text>
+            <text x="835" y="168" text-anchor="middle">process order</text>
+            <text class="t-small" x="835" y="188" text-anchor="middle">group nodered-order-processor</text>
+            <path class="arrow" d="M835,104 V123" />
+
+            <!-- main arrows -->
+            <path class="arrow" d="M125,122 H168" />
+            <path class="arrow" d="M170,212 H140 V150 H127" />
+            <text class="t-small" x="60" y="190" text-anchor="middle">202 / 400 / 503</text>
+            <path class="arrow" d="M380,212 H415 V105 H448" />
+            <path class="arrow" d="M660,105 H700 V145 H728" />
+            <path class="arrow" d="M730,175 H662" />
+            <path class="arrow" d="M760,205 V235 H662" />
+            <text class="t-small" x="700" y="168" text-anchor="middle">valid</text>
+            <text class="t-small" x="712" y="252" text-anchor="middle">invalid</text>
+
+            <!-- test side -->
+            <text class="t-label" x="10" y="312">MOCHA + CHAI TEST CLIENTS (INDEPENDENT ORACLES)</text>
+            <rect class="test" x="10" y="325" width="230" height="58" rx="8" />
+            <text x="125" y="350" text-anchor="middle">NodeRedOrdersClient</text>
+            <text class="t-small" x="125" y="368" text-anchor="middle">P-01 trigger: POST /orders</text>
+            <rect class="test" x="260" y="325" width="230" height="58" rx="8" />
+            <text x="375" y="350" text-anchor="middle">Test subscriber (P-01)</text>
+            <text class="t-small" x="375" y="368" text-anchor="middle">reads qa.orders.v1</text>
+            <rect class="test" x="510" y="325" width="220" height="58" rx="8" />
+            <text x="620" y="350" text-anchor="middle">KafkaTestPublisher (C-01)</text>
+            <text class="t-small" x="620" y="368" text-anchor="middle">writes qa.orders.v1</text>
+            <rect class="test" x="750" y="325" width="220" height="58" rx="8" />
+            <text x="860" y="350" text-anchor="middle">Test subscriber (C-01)</text>
+            <text class="t-small" x="860" y="368" text-anchor="middle">reads qa.orders.processed.v1</text>
+            <path class="arrow t" d="M100,325 V162" />
+            <path class="arrow t" d="M470,128 L395,323" />
+            <path class="arrow t" d="M600,325 L540,132" />
+            <path class="arrow t" d="M640,200 L840,323" />
+            <text class="t-small" x="10" y="410">
+              Each test uses its own run-unique consumer group, so it never shares offsets with Node-RED or other runs.
+            </text>
+          </svg>
+        </div>
+
+        <h3>Components</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Kafka broker</td>
+                <td>
+                  <code>apache/kafka:3.9.1</code>, KRaft single node. Host listener <code>localhost:9092</code> (tests),
+                  internal listener <code>kafka:19092</code> (Node-RED).
+                </td>
+              </tr>
+              <tr>
+                <td>kafka-init</td>
+                <td>
+                  One-shot job that creates <code>qa.orders.v1</code>, <code>qa.orders.processed.v1</code> and
+                  <code>qa.orders.dlq.v1</code> (1 partition each), then exits.
+                </td>
+              </tr>
+              <tr>
+                <td>Node-RED</td>
+                <td>
+                  Node-RED 4.0.9 image with <code>kafkajs@2.2.4</code>. Two tabs: <em>Order producer</em> and
+                  <em>Order consumer</em>.
+                </td>
+              </tr>
+              <tr>
+                <td>Consumer group</td>
+                <td>
+                  <code>nodered-order-processor</code>; commits after every record, only once the output write has
+                  succeeded.
+                </td>
+              </tr>
+              <tr>
+                <td>Producer retries</td>
+                <td>
+                  <code>PRODUCER_RETRIES=2</code>, 300 ms initial backoff, 1 s connect timeout. When the broker is down
+                  the client gets a 503 in about 1–2 s.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Event contract: OrderCreated v1</h3>
+        <p>
+          Record key = <code>orderId</code>. Headers: <code>correlation-id</code>, <code>event-type</code>,
+          <code>schema-version</code>.
+        </p>
+        <pre><code>{
+  "schemaVersion": 1,                    <span class="c">// added by the producer</span>
+  "eventType": "OrderCreated",           <span class="c">// added by the producer</span>
+  "eventId": "6f1c…",                    <span class="c">// UUID, added by the producer</span>
+  "correlationId": "it-producer-1731…",  <span class="c">// X-Correlation-Id header, else generated</span>
+  "occurredAt": "2026-11-12T22:22:33.000Z",
+  "orderId": "ORD-1",                    <span class="c">// required</span>
+  "customerId": "CUST-1001",             <span class="c">// required</span>
+  "currency": "USD",                     <span class="c">// required, ^[A-Z]{3}$</span>
+  "items": [ { "sku": "SKU-1", "quantity": 2, "unitPrice": 9.99 } ]  <span class="c">// required, non-empty</span>
+}</code></pre>
+        <p>
+          The consumer turns a valid event into <strong>OrderProcessed</strong>, with <code>itemCount</code> (the sum of
+          the quantities), <code>totalAmount</code> (the sum of quantity × unitPrice, to 2 decimal places),
+          <code>status: "PROCESSED"</code>, <code>sourceEventId</code> and
+          <code>source {topic, partition, offset}</code>. Invalid JSON or a schema violation becomes
+          <strong>OrderRejected</strong> on the DLQ, with <code>reason: INVALID_JSON | SCHEMA_VALIDATION_FAILED</code>.
+        </p>
+      </section>
+
+      <!-- 4 -->
+      <section id="e2e">
+        <h2><span class="num">4</span>End-to-end workflow</h2>
+        <h3>The path of one order</h3>
+        <ol class="steps">
+          <li>
+            <strong>Request.</strong> The client sends <code>POST /orders</code> with <code>orderId</code>,
+            <code>customerId</code>, <code>currency</code> and <code>items</code>. The correlation ID comes from the
+            <code>X-Correlation-Id</code> header, then <code>body.correlationId</code>, otherwise a new UUID.
+          </li>
+          <li>
+            <strong>Validate.</strong> If a field is missing or invalid, the producer returns
+            <code>400 VALIDATION_FAILED</code> with details and publishes nothing.
+          </li>
+          <li>
+            <strong>Publish.</strong> The producer wraps the order in the OrderCreated envelope and sends it with
+            <code>key = orderId</code> and <code>acks=all</code>. When the broker acknowledges, the client gets
+            <code>202 PUBLISHED</code> with the partition and offset. If the broker is unreachable after the retries,
+            the client gets <code>503 BROKER_UNAVAILABLE</code> and nothing is buffered.
+          </li>
+          <li>
+            <strong>Consume.</strong> The long-lived Node-RED consumer reads <code>qa.orders.v1</code> in group
+            <code>nodered-order-processor</code>.
+          </li>
+          <li>
+            <strong>Process.</strong> A valid event produces <code>OrderProcessed</code> on the processed topic. Bad
+            JSON or a schema violation produces <code>OrderRejected</code> on the DLQ, and the consumer continues with
+            the next record.
+          </li>
+          <li>
+            <strong>Commit.</strong> The offset is committed only after the step 5 write succeeds (at-least-once). A
+            restart with the same group ID resumes from the committed offset.
+          </li>
+        </ol>
+
+        <h3>Full run from start to shutdown</h3>
+        <pre><code>docker compose up -d --build --wait
+   ├─ kafka starts (KRaft) → healthcheck passes
+   ├─ kafka-init creates the 3 topics → exits 0
+   └─ node-red starts → producer ready, consumer joins its group
+npm ci
+npm run test:unit   <span class="c"># 15 contract tests, no broker needed</span>
+npm test            <span class="c"># KAFKA-P-01 + KAFKA-C-01 against the real stack</span>
+   ├─ 2 passing → optionally run the manual scenarios
+   └─ failure   → docker compose logs node-red / kafka (the failure message names what was missing)
+docker compose down -v   <span class="c"># removes containers, network and broker data</span></code></pre>
+
+        <h3>Where each scenario sits on the path</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Step on the path</th>
+                <th>Scenario</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Request → publish (happy path)</td>
+                <td>KAFKA-P-01</td>
+                <td><span class="badge auto">Automated</span></td>
+              </tr>
+              <tr>
+                <td>Request rejected before Kafka</td>
+                <td>KAFKA-P-02</td>
+                <td><span class="badge manual">Manual</span></td>
+              </tr>
+              <tr>
+                <td>Publish while the broker is down</td>
+                <td>KAFKA-P-03</td>
+                <td><span class="badge manual">Manual</span></td>
+              </tr>
+              <tr>
+                <td>Consume → OrderProcessed</td>
+                <td>KAFKA-C-01</td>
+                <td><span class="badge auto">Automated</span></td>
+              </tr>
+              <tr>
+                <td>Consume malformed → DLQ, then continue</td>
+                <td>KAFKA-C-02</td>
+                <td><span class="badge manual">Manual</span></td>
+              </tr>
+              <tr>
+                <td>Consumer restart → resume from committed offset</td>
+                <td>KAFKA-C-03</td>
+                <td><span class="badge manual">Manual</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section id="scenarios">
+        <h2><span class="num">5</span>Manual test scenarios</h2>
+        <p>
+          The six scenarios are below; expand one to see its steps and expected results. The full versions, with
+          copy-paste shell helpers, are in <code>docs/manual-test-scenarios.md</code>. Every scenario was executed
+          against the Docker stack, and each one's observed result matched its expected result.
+        </p>
+
+        <h3>Producer</h3>
+        <details>
+          <summary>
+            KAFKA-P-01 · Producer publishes a valid event <span class="badge auto">Automated</span>
+            <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p><strong>Preconditions:</strong> stack running, Kafka healthy, Node-RED reachable on :1880.</p>
+            <p>
+              <strong>Steps:</strong> note the end offset of <code>qa.orders.v1</code>; <code>POST /orders</code> with a
+              valid body and <code>X-Correlation-Id: manual-p01</code>; read the topic.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>
+                HTTP <code>202</code>
+                <code>{"status":"PUBLISHED", topic, partition, offset, key:"ORD-P01", eventId, correlationId}</code>,
+                with the offset equal to the previous end offset.
+              </li>
+              <li>
+                Exactly one record at that offset, key <code>ORD-P01</code>, headers <code>correlation-id</code>,
+                <code>event-type: OrderCreated</code>, <code>schema-version: 1</code>.
+              </li>
+              <li>
+                The payload has the envelope fields and the business fields exactly as sent; the end offset grew by 1.
+              </li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>
+            KAFKA-P-02 · Producer rejects an event missing a required field <span class="badge manual">Manual</span>
+            <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p>
+              <strong>Steps:</strong> POST a body without <code>customerId</code>, then repeat for <code>orderId</code>,
+              <code>currency</code>, <code>items</code> and <code>"items": []</code>.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>
+                HTTP <code>400</code>
+                <code>{"status":"REJECTED","error":"VALIDATION_FAILED","details":["customerId is required"]}</code>.
+              </li>
+              <li>
+                The end offset is unchanged and nothing is published; Node-RED logs a <code>REJECTED</code> warning.
+              </li>
+              <li>Each variant names its field; an empty array gives <code>items must be a non-empty array</code>.</li>
+            </ul>
+            <p><strong>Observed:</strong> 400 with the expected details; end offset 31 before and after.</p>
+          </div>
+        </details>
+        <details>
+          <summary>
+            KAFKA-P-03 · Producer handles an unavailable broker <span class="badge manual">Manual</span>
+            <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p>
+              <strong>Steps:</strong> <code>docker compose stop kafka</code>; POST an order and time it; check that
+              Node-RED is still up; <code>docker compose start kafka</code>; POST again.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>
+                <code>503 BROKER_UNAVAILABLE</code> within 5 s, with <code>retries: 2</code>; the request does not hang.
+              </li>
+              <li>The Node-RED container keeps running.</li>
+              <li>
+                After recovery the next request returns <code>202</code> without restarting Node-RED, and only the
+                post-recovery message is on the topic (no replay).
+              </li>
+            </ul>
+            <p><strong>Observed:</strong> 503 in 0.8–2.0 s; the next request after recovery returned 202.</p>
+          </div>
+        </details>
+
+        <h3>Consumer</h3>
+        <details>
+          <summary>
+            KAFKA-C-01 · Consumer processes a valid event and produces a downstream result
+            <span class="badge auto">Automated</span> <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p><strong>Preconditions:</strong> group <code>nodered-order-processor</code> is Stable with 1 member.</p>
+            <p>
+              <strong>Steps:</strong> publish a valid OrderCreated (key <code>ORD-C01</code>, items 1 × 49.90 + 3 ×
+              7.30) directly to <code>qa.orders.v1</code>; read the processed topic; check the group lag.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>
+                One <code>OrderProcessed</code> with key <code>ORD-C01</code>, <code>itemCount: 4</code>,
+                <code>totalAmount: 71.8</code>, and <code>sourceEventId</code> and <code>source</code> pointing to the
+                input record.
+              </li>
+              <li>Nothing on the DLQ; group lag 0.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>
+            KAFKA-C-02 · Consumer handles a malformed event and continues <span class="badge manual">Manual</span>
+            <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p>
+              <strong>Steps:</strong> publish one invalid-JSON record followed by a valid one; read the DLQ and
+              processed topics; repeat with valid JSON that breaks the schema.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>
+                DLQ: <code>OrderRejected</code> with <code>reason: INVALID_JSON</code>, the source offset and the
+                original <code>rawValue</code>.
+              </li>
+              <li>
+                The next valid record is processed at offset + 1 (<code>totalAmount: 20</code>); the bad record does not
+                block the consumer.
+              </li>
+              <li>
+                Lag 0, so the bad record is committed and not retried forever. The schema variant gives
+                <code>SCHEMA_VALIDATION_FAILED</code> with 6 listed errors.
+              </li>
+            </ul>
+            <p><strong>Observed:</strong> bad record at offset 26 went to the DLQ, offset 27 was processed, lag 0.</p>
+          </div>
+        </details>
+        <details>
+          <summary>
+            KAFKA-C-03 · Consumer restarts and resumes from its committed offset
+            <span class="badge manual">Manual</span> <span class="badge ok">Pass</span>
+          </summary>
+          <div class="body">
+            <p>
+              <strong>Steps:</strong> note the committed offset C; <code>docker compose stop node-red</code>; publish 2
+              events; check the lag; start Node-RED with the same group ID; check again.
+            </p>
+            <p><strong>Expected:</strong></p>
+            <ul>
+              <li>While stopped: the group has no active members, and lag = 2 (current C, log end C+2).</li>
+              <li>After restart: lag 0 with a new consumer ID in the same group.</li>
+              <li>Both new events are processed exactly once, in order; nothing before C is reprocessed.</li>
+            </ul>
+            <p><strong>Observed:</strong> committed 32, lag 2 → committed 34, lag 0, with no reprocessing.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- 6 -->
+      <section id="gherkin">
+        <h2><span class="num">6</span>Gherkin test cases</h2>
+        <p>
+          All six scenarios are written in Gherkin, one feature file per side of the system. Scenarios tagged
+          <code>@automated</code> are executable specifications: Cucumber runs them against the live stack with Chai
+          assertions in the step definitions. Scenarios tagged <code>@manual</code> are run by hand using the shell
+          commands in <code>docs/manual-test-scenarios.md</code>; <code>cucumber.js</code> excludes them with the tag
+          expression <code>not @manual</code>.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Feature file</th>
+                <th>Scenario</th>
+                <th>Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="3"><code>features/producer.feature</code></td>
+                <td>KAFKA-P-01 Producer publishes a valid event</td>
+                <td><span class="badge auto">@automated</span></td>
+              </tr>
+              <tr>
+                <td>KAFKA-P-02 Rejects a missing or invalid field (Scenario Outline, 6 examples)</td>
+                <td><span class="badge manual">@manual</span></td>
+              </tr>
+              <tr>
+                <td>KAFKA-P-03 Handles an unavailable broker and recovers</td>
+                <td><span class="badge manual">@manual</span></td>
+              </tr>
+              <tr>
+                <td rowspan="3"><code>features/consumer.feature</code></td>
+                <td>KAFKA-C-01 Processes a valid event</td>
+                <td><span class="badge auto">@automated</span></td>
+              </tr>
+              <tr>
+                <td>KAFKA-C-02 Malformed event to DLQ, then continues (+ schema variant)</td>
+                <td><span class="badge manual">@manual</span></td>
+              </tr>
+              <tr>
+                <td>KAFKA-C-03 Restarts and resumes from the committed offset</td>
+                <td><span class="badge manual">@manual</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details open>
+          <summary>features/producer.feature</summary>
+          <div class="body" style="padding-left: 16px">
+            <pre><code><span class="g-tag">@producer</span>
+<span class="g-kw">Feature:</span><strong> Node-RED order producer publishes OrderCreated events to Kafka</strong>
+<span class="c">  As a client of the order service</span>
+<span class="c">  I want every valid order posted to the Node-RED producer to be published to Kafka</span>
+<span class="c">  So that downstream consumers receive it exactly once, and invalid orders never reach the topic</span>
+
+<span class="c">  The producer flow exposes POST /orders, validates the request, wraps it in the</span>
+<span class="c">  OrderCreated v1 envelope and publishes it to the "orders" topic (qa.orders.v1)</span>
+<span class="c">  with key = orderId and acks=all.</span>
+
+<span class="c">  Scenarios tagged @automated run with `npm run test:bdd`.</span>
+<span class="c">  Scenarios tagged @manual are executed by hand; the shell commands for each step</span>
+<span class="c">  are in docs/manual-test-scenarios.md.</span>
+
+  <span class="g-kw">Background:</span><strong></strong>
+    <span class="g-step">Given</span> the Kafka broker and Node-RED stack are running
+    <span class="g-step">And</span> a unique test run id
+
+  <span class="g-tag">@automated</span> <span class="g-tag">@KAFKA-P-01</span> <span class="g-tag">@smoke</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-P-01 Producer publishes a valid event</strong>
+    <span class="g-step">Given</span> a test subscriber is listening on the <span class="g-str">"orders"</span> topic
+    <span class="g-step">And</span> a valid order request for customer <span class="g-str">"CUST-1001"</span> in <span class="g-str">"USD"</span> with the items:
+<span class="g-table">      | sku          | quantity | unitPrice |</span>
+<span class="g-table">      | SKU-RED-MUG  | 2        | 12.5      |</span>
+<span class="g-table">      | SKU-BLUE-PEN | 3        | 1.25      |</span>
+    <span class="g-step">When</span> the order is posted to the producer with the run id as correlation id
+    <span class="g-step">Then</span> the producer responds with HTTP 202 and status <span class="g-str">"PUBLISHED"</span>
+    <span class="g-step">And</span> exactly one record for the run arrives on the <span class="g-str">"orders"</span> topic
+    <span class="g-step">And</span> the record key is the order id
+    <span class="g-step">And</span> the record partition and offset match the producer acknowledgement
+    <span class="g-step">And</span> the record has the headers:
+<span class="g-table">      | header         | value        |</span>
+<span class="g-table">      | correlation-id | {runId}      |</span>
+<span class="g-table">      | event-type     | OrderCreated |</span>
+<span class="g-table">      | schema-version | 1            |</span>
+    <span class="g-step">And</span> the record value is a valid <span class="g-str">"OrderCreated"</span> envelope with the acknowledged event id
+    <span class="g-step">And</span> the business fields in the record equal the order request
+
+  <span class="g-tag">@manual</span> <span class="g-tag">@KAFKA-P-02</span>
+  <span class="g-kw">Scenario Outline:</span><strong> KAFKA-P-02 Producer rejects an order with a missing or invalid field</strong>
+    <span class="g-step">Given</span> the end offset of the <span class="g-str">"orders"</span> topic is noted
+    <span class="g-step">And</span> a valid order request where <span class="g-str">"<span class="g-ph">&lt;field&gt;</span>"</span> is <span class="g-ph">&lt;change&gt;</span>
+    <span class="g-step">When</span> the order is posted to the producer with correlation id <span class="g-str">"manual-p02"</span>
+    <span class="g-step">Then</span> the producer responds with HTTP 400 and status <span class="g-str">"REJECTED"</span>
+    <span class="g-step">And</span> the error is <span class="g-str">"VALIDATION_FAILED"</span> with the detail <span class="g-str">"<span class="g-ph">&lt;detail&gt;</span>"</span>
+    <span class="g-step">And</span> the end offset of the <span class="g-str">"orders"</span> topic is unchanged
+    <span class="g-step">And</span> the Node-RED log has a <span class="g-str">"REJECTED"</span> warning for correlation id <span class="g-str">"manual-p02"</span>
+
+    <span class="g-kw">Examples:</span><strong></strong>
+<span class="g-table">      | field      | change          | detail                                    |</span>
+<span class="g-table">      | customerId | missing         | customerId is required                    |</span>
+<span class="g-table">      | orderId    | missing         | orderId is required                       |</span>
+<span class="g-table">      | currency   | missing         | currency is required                      |</span>
+<span class="g-table">      | items      | missing         | items is required                         |</span>
+<span class="g-table">      | items      | an empty array  | items must be a non-empty array           |</span>
+<span class="g-table">      | currency   | lowercase "usd" | currency must be a 3-letter ISO 4217 code |</span>
+
+  <span class="g-tag">@manual</span> <span class="g-tag">@KAFKA-P-03</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-P-03 Producer handles an unavailable broker and recovers without a restart</strong>
+    <span class="g-step">Given</span> the Kafka broker is stopped
+    <span class="g-step">And</span> a valid order request for customer <span class="g-str">"CUST-3003"</span> in <span class="g-str">"USD"</span>
+    <span class="g-step">When</span> the order is posted to the producer with correlation id <span class="g-str">"manual-p03"</span>
+    <span class="g-step">Then</span> the producer responds with HTTP 503 and status <span class="g-str">"FAILED"</span> within 5 seconds
+    <span class="g-step">And</span> the error is <span class="g-str">"BROKER_UNAVAILABLE"</span> after 2 retries
+    <span class="g-step">And</span> the Node-RED container is still running
+    <span class="g-step">When</span> the Kafka broker is started again
+    <span class="g-step">And</span> the order is posted to the producer with correlation id <span class="g-str">"manual-p03-recovered"</span>
+    <span class="g-step">Then</span> the producer responds with HTTP 202 and status <span class="g-str">"PUBLISHED"</span>
+    <span class="g-step">And</span> only correlation id <span class="g-str">"manual-p03-recovered"</span> is on the <span class="g-str">"orders"</span> topic
+    <span class="g-step">And</span> the failed request was not buffered or replayed</code></pre>
+          </div>
+        </details>
+        <details open>
+          <summary>features/consumer.feature</summary>
+          <div class="body" style="padding-left: 16px">
+            <pre><code><span class="g-tag">@consumer</span>
+<span class="g-kw">Feature:</span><strong> Node-RED order consumer turns OrderCreated events into downstream results</strong>
+<span class="c">  As the order-processing service</span>
+<span class="c">  I want every OrderCreated event on Kafka to be processed exactly once</span>
+<span class="c">  So that valid orders produce an OrderProcessed result and bad input never blocks the consumer</span>
+
+<span class="c">  The consumer flow reads the "orders" topic (qa.orders.v1) in consumer group</span>
+<span class="c">  nodered-order-processor. A valid event becomes OrderProcessed on the "processed"</span>
+<span class="c">  topic (qa.orders.processed.v1). Invalid JSON or a schema violation becomes</span>
+<span class="c">  OrderRejected on the "dlq" topic (qa.orders.dlq.v1). The offset is committed only</span>
+<span class="c">  after that write succeeds (at-least-once).</span>
+
+<span class="c">  Scenarios tagged @automated run with `npm run test:bdd`.</span>
+<span class="c">  Scenarios tagged @manual are executed by hand; the shell commands for each step</span>
+<span class="c">  are in docs/manual-test-scenarios.md.</span>
+
+  <span class="g-kw">Background:</span><strong></strong>
+    <span class="g-step">Given</span> the Kafka broker and Node-RED stack are running
+    <span class="g-step">And</span> a unique test run id
+
+  <span class="g-tag">@automated</span> <span class="g-tag">@KAFKA-C-01</span> <span class="g-tag">@smoke</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-C-01 Consumer processes a valid event and produces a downstream result</strong>
+    <span class="g-step">Given</span> the Node-RED consumer group is stable with at least one member
+    <span class="g-step">And</span> a test subscriber is listening on the <span class="g-str">"processed"</span> topic
+    <span class="g-step">And</span> an OrderCreated event for customer <span class="g-str">"CUST-2002"</span> in <span class="g-str">"EUR"</span> with the items:
+<span class="g-table">      | sku              | quantity | unitPrice |</span>
+<span class="g-table">      | SKU-LAPTOP-STAND | 1        | 49.9      |</span>
+<span class="g-table">      | SKU-USB-C-CABLE  | 3        | 7.3       |</span>
+    <span class="g-step">When</span> the event is published directly to the <span class="g-str">"orders"</span> topic
+    <span class="g-step">Then</span> exactly one record for the run arrives on the <span class="g-str">"processed"</span> topic
+    <span class="g-step">And</span> the record key is the order id
+    <span class="g-step">And</span> the record has the headers:
+<span class="g-table">      | header         | value          |</span>
+<span class="g-table">      | correlation-id | {runId}        |</span>
+<span class="g-table">      | event-type     | OrderProcessed |</span>
+    <span class="g-step">And</span> the OrderProcessed result has:
+<span class="g-table">      | field         | value     |</span>
+<span class="g-table">      | schemaVersion | 1         |</span>
+<span class="g-table">      | status        | PROCESSED |</span>
+<span class="g-table">      | customerId    | CUST-2002 |</span>
+<span class="g-table">      | currency      | EUR       |</span>
+<span class="g-table">      | itemCount     | 4         |</span>
+<span class="g-table">      | totalAmount   | 71.8      |</span>
+    <span class="g-step">And</span> the result references the source event and the published record
+    <span class="g-step">And</span> the result has an ISO-8601 <span class="g-str">"processedAt"</span> timestamp
+
+  <span class="g-tag">@manual</span> <span class="g-tag">@KAFKA-C-02</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-C-02 Consumer sends a malformed event to the DLQ and continues with the next valid event</strong>
+    <span class="g-step">Given</span> the Node-RED consumer group is stable with at least one member
+    <span class="g-step">When</span> a record with key <span class="g-str">"ORD-C02-BAD"</span> and the value <span class="g-str">"{"</span>orderId<span class="g-str">": "</span>ORD-C02-BAD<span class="g-str">", this is not json"</span> is published to the <span class="g-str">"orders"</span> topic
+    <span class="g-step">And</span> a valid OrderCreated event with key <span class="g-str">"ORD-C02-OK"</span> and correlation id <span class="g-str">"manual-c02"</span> is published right after it
+    <span class="g-step">Then</span> one OrderRejected record with key <span class="g-str">"ORD-C02-BAD"</span> arrives on the <span class="g-str">"dlq"</span> topic
+    <span class="g-step">And</span> its reason is <span class="g-str">"INVALID_JSON"</span> and its rawValue is the original text
+    <span class="g-step">And</span> its source offset is the offset of the malformed record
+    <span class="g-step">And</span> one OrderProcessed result for <span class="g-str">"manual-c02"</span> arrives on the <span class="g-str">"processed"</span> topic at source offset + 1
+    <span class="g-step">And</span> the consumer group lag is 0
+
+  <span class="g-tag">@manual</span> <span class="g-tag">@KAFKA-C-02</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-C-02 (variant) Consumer rejects valid JSON that breaks the schema</strong>
+    <span class="g-step">Given</span> the Node-RED consumer group is stable with at least one member
+    <span class="g-step">When</span> a record with key <span class="g-str">"ORD-C02-X"</span> and the value <span class="g-str">"{"</span>schemaVersion<span class="g-str">":1,"</span>eventType<span class="g-str">":"</span>OrderCreated<span class="g-str">","</span>orderId<span class="g-str">":"</span>ORD-C02-X<span class="g-str">"}"</span> is published to the <span class="g-str">"orders"</span> topic
+    <span class="g-step">Then</span> one OrderRejected record with key <span class="g-str">"ORD-C02-X"</span> arrives on the <span class="g-str">"dlq"</span> topic
+    <span class="g-step">And</span> its reason is <span class="g-str">"SCHEMA_VALIDATION_FAILED"</span> with the errors:
+<span class="g-table">      | error                                    |</span>
+<span class="g-table">      | customerId is required                   |</span>
+<span class="g-table">      | currency is required                     |</span>
+<span class="g-table">      | items is required                        |</span>
+<span class="g-table">      | eventId is required                      |</span>
+<span class="g-table">      | correlationId is required                |</span>
+<span class="g-table">      | occurredAt must be an ISO-8601 timestamp |</span>
+    <span class="g-step">And</span> the consumer group lag is 0
+
+  <span class="g-tag">@manual</span> <span class="g-tag">@KAFKA-C-03</span>
+  <span class="g-kw">Scenario:</span><strong> KAFKA-C-03 Consumer restarts and resumes from its committed offset with the same group id</strong>
+    <span class="g-step">Given</span> the consumer group lag is 0 and the committed offset is noted as C
+    <span class="g-step">When</span> the Node-RED consumer is stopped
+    <span class="g-step">Then</span> the consumer group has no active members and its committed offset is still C
+    <span class="g-step">When</span> 2 valid OrderCreated events are published to the <span class="g-str">"orders"</span> topic
+    <span class="g-step">Then</span> the consumer group lag is 2
+    <span class="g-step">When</span> the Node-RED consumer is started again with the same group id
+    <span class="g-step">Then</span> the consumer group lag returns to 0 with a new consumer id
+    <span class="g-step">And</span> each of the 2 events produces exactly one OrderProcessed result, in order
+    <span class="g-step">And</span> no event before offset C is processed again</code></pre>
+          </div>
+        </details>
+
+        <h3>How a Gherkin step becomes a Kafka check</h3>
+        <p>
+          Each step maps to a step definition through a Cucumber expression. Step definitions stay thin: they call the
+          same client objects, builder and config the Mocha specs use, and assert with Chai.
+        </p>
+        <pre><code><span class="c">// features/step_definitions/consumer.steps.js</span>
+Then('the OrderProcessed result has:', function (table) {
+  <span class="c">// Expected values are literals in the feature file, never recomputed with the code under test.</span>
+  const result = this.record.json;
+  expect(result.eventType).to.equal('OrderProcessed');
+  for (const { field, value } of table.hashes()) {
+    expect(result[field], field).to.deep.equal(parseValue(value));
+  }
+});</code></pre>
+        <div class="grid">
+          <div class="card">
+            <strong>Background</strong><br />Checks the broker, topics and Node-RED are reachable, failing with a "start
+            the stack" hint if not, then creates the run id.
+          </div>
+          <div class="card">
+            <strong>World</strong><br />A fresh <code>KafkaOrdersWorld</code> per scenario holds the run id, clients and
+            matched record, so scenarios never share state.
+          </div>
+          <div class="card">
+            <strong>Hooks</strong><br />The <code>After</code> hook closes every client and deletes test consumer
+            groups; on failure it attaches the response and record to the report.
+          </div>
+          <div class="card">
+            <strong>Readable tables</strong><br />Topics are named by alias (<code>"orders"</code>,
+            <code>"processed"</code>); <code>{runId}</code> in a cell becomes the run's correlation id.
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 -->
+      <section id="automation">
+        <h2><span class="num">7</span>Automated tests</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Test file</th>
+                <th>Scenario</th>
+                <th>Trigger</th>
+                <th>Independent oracle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <code>features/producer.feature</code> <code>@KAFKA-P-01</code><br /><code
+                    >test/producer.int.test.js</code
+                  >
+                </td>
+                <td>KAFKA-P-01</td>
+                <td>HTTP POST to the Node-RED producer</td>
+                <td>
+                  kafkajs subscriber on <code>qa.orders.v1</code>, group <code>qa-test-producer-&lt;runId&gt;</code>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code>features/consumer.feature</code> <code>@KAFKA-C-01</code><br /><code
+                    >test/consumer.int.test.js</code
+                  >
+                </td>
+                <td>KAFKA-C-01</td>
+                <td>kafkajs test publisher writes OrderCreated to <code>qa.orders.v1</code></td>
+                <td>
+                  kafkajs subscriber on <code>qa.orders.processed.v1</code>, group
+                  <code>qa-test-consumer-&lt;runId&gt;</code>
+                </td>
+              </tr>
+              <tr>
+                <td><code>test/unit/order-event.test.js</code></td>
+                <td>Contract</td>
+                <td>Direct function calls</td>
+                <td>15 literal expectations for validation, envelope and totals (no broker)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Producer test flow (KAFKA-P-01)</h3>
+        <ol class="steps">
+          <li>
+            Start a test subscriber on <code>qa.orders.v1</code>: record the end offsets, join a run-unique group, and
+            seek to the recorded offsets so it is ready before anything is published.
+          </li>
+          <li>
+            <code>NodeRedOrdersClient.createOrder(order, { correlationId: runId })</code> → Node-RED publishes the
+            event.
+          </li>
+          <li><code>subscriber.waitFor(correlationId === runId)</code>, bounded at 15 s.</li>
+          <li>
+            Assert the HTTP 202 ack, topic, key, that the partition and offset match the ack, the headers, the exact
+            payload key set, a UUID <code>eventId</code>, an ISO timestamp, the items passed through unchanged, and
+            exactly one record.
+          </li>
+          <li><code>after</code>: disconnect and delete the test consumer group.</li>
+        </ol>
+
+        <h3>Consumer test flow (KAFKA-C-01)</h3>
+        <ol class="steps">
+          <li>
+            <code>waitForGroupStable('nodered-order-processor')</code>: the system under test must be subscribed first.
+          </li>
+          <li>Start a test subscriber on <code>qa.orders.processed.v1</code>.</li>
+          <li>
+            <code>KafkaTestPublisher.publishOrderCreated(anOrder()…buildEvent())</code> straight to Kafka (bypassing
+            Node-RED).
+          </li>
+          <li>Wait for the <code>OrderProcessed</code> result with this run's correlation ID.</li>
+          <li>
+            Assert the key, headers, <code>itemCount: 4</code>, <code>totalAmount: 71.8</code>, that
+            <code>source</code> equals the published offset, and exactly one result.
+          </li>
+        </ol>
+
+        <h3>Reliability techniques</h3>
+        <div class="grid">
+          <div class="card">
+            <strong>Unique per run</strong><br />Each run generates a <code>runId</code> that is used as the correlation
+            ID, inside the order ID, and in the consumer group name, so runs never interfere with each other.
+          </div>
+          <div class="card">
+            <strong>Ready before publish</strong><br />Subscribers seek to pre-recorded end offsets after joining their
+            group, so no message can be missed.
+          </div>
+          <div class="card">
+            <strong>Bounded waits</strong><br />No <code>sleep()</code>. Every wait has a timeout and a failure message
+            that names what was missing.
+          </div>
+          <div class="card">
+            <strong>Clean teardown</strong><br />All clients are closed and test groups are deleted. Mocha runs without
+            <code>--exit</code>, so a leaked client would make the run hang.
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section id="structure">
+        <h2><span class="num">8</span>Code structure</h2>
+        <p>
+          For API and messaging tests, the equivalent of the Page Object Model is the <strong>client object</strong>:
+          the tests say <em>what</em> they do, and the clients hide <em>how</em> (HTTP, kafkajs, readiness, cleanup).
+        </p>
+        <pre><code>PROJECT FILES/
+├─ docker-compose.yml              <span class="c"># Environment: Kafka broker, topic init, Node-RED</span>
+├─ node-red/                       <span class="c"># SYSTEM UNDER TEST</span>
+│  ├─ flows.json                   <span class="c">#   producer + consumer flows (importable)</span>
+│  ├─ lib/order-event.js           <span class="c">#   event contract: validation, envelope, result</span>
+│  ├─ settings.js                  <span class="c">#   exposes kafkajs + contract to function nodes</span>
+│  └─ Dockerfile, package.json     <span class="c">#   pinned Node-RED 4.0.9 + kafkajs 2.2.4</span>
+├─ features/                       <span class="c"># GHERKIN LAYER (Cucumber + Chai)</span>
+│  ├─ producer.feature             <span class="c">#   KAFKA-P-01..03 (P-01 @automated)</span>
+│  ├─ consumer.feature             <span class="c">#   KAFKA-C-01..03 (C-01 @automated)</span>
+│  ├─ step_definitions/            <span class="c">#   common / producer / consumer steps → test/clients</span>
+│  └─ support/                     <span class="c">#   world.js, hooks.js, tables.js</span>
+├─ cucumber.js                     <span class="c"># Cucumber config: paths, "not @manual", reports/</span>
+├─ test/                           <span class="c"># TEST CODE (Mocha + Chai, shared clients)</span>
+│  ├─ producer.int.test.js         <span class="c">#   L1 spec: KAFKA-P-01</span>
+│  ├─ consumer.int.test.js         <span class="c">#   L1 spec: KAFKA-C-01</span>
+│  ├─ unit/order-event.test.js     <span class="c">#   L1 spec: 15 contract unit tests</span>
+│  ├─ clients/                     <span class="c">#   L2 client objects</span>
+│  │  ├─ node-red-orders.client.js <span class="c">#     NodeRedOrdersClient.createOrder()</span>
+│  │  ├─ kafka-test-publisher.js   <span class="c">#     KafkaTestPublisher.publishOrderCreated()</span>
+│  │  ├─ kafka-test-subscriber.js  <span class="c">#     startTestSubscriber() → waitFor()/close(); waitForGroupStable()</span>
+│  │  └─ kafka.js                  <span class="c">#     createKafka(): one place for client settings</span>
+│  ├─ fixtures/order.builder.js    <span class="c">#   L3 test data builder: anOrder().withCurrency('EUR')…</span>
+│  └─ support/config.js            <span class="c">#   L4 env config, newRunId(), withTimeout()</span>
+├─ docs/                           <span class="c"># manual scenarios, JSON schema, workflow docs</span>
+├─ ci/github-actions-e2e.yml       <span class="c"># CI pipeline</span>
+└─ .mocharc.json, eslint.config.js, .prettierrc.json, .editorconfig, .nvmrc</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Layer</th>
+                <th>Folder</th>
+                <th>Responsibility</th>
+                <th>Must not</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>L1 Specs</td>
+                <td><code>test/*.int.test.js</code>, <code>test/unit/</code></td>
+                <td>State the scenario as Arrange / Act / Assert and hold the expected values</td>
+                <td>Build raw HTTP or Kafka messages, or hard-code URLs and topics</td>
+              </tr>
+              <tr>
+                <td>L2 Clients</td>
+                <td><code>test/clients/</code></td>
+                <td>Talk to one interface, handle readiness, close cleanly</td>
+                <td>Contain assertions or scenario data</td>
+              </tr>
+              <tr>
+                <td>L3 Fixtures</td>
+                <td><code>test/fixtures/</code></td>
+                <td>Provide valid default data that a test can override</td>
+                <td>Reuse system-under-test code to compute expected results</td>
+              </tr>
+              <tr>
+                <td>L4 Support</td>
+                <td><code>test/support/</code></td>
+                <td>Config from validated env vars, run IDs, timeouts</td>
+                <td>Know anything about the business domain</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Dependencies only point downward (specs → clients and fixtures → support). Nothing in
+          <code>node-red/</code> imports from <code>test/</code>.
+        </p>
+
+        <h3>Naming conventions</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Convention</th>
+                <th>Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Integration spec</td>
+                <td><code>&lt;area&gt;.int.test.js</code></td>
+                <td><code>producer.int.test.js</code></td>
+              </tr>
+              <tr>
+                <td><code>describe</code> title</td>
+                <td>flow direction + [manual ID]</td>
+                <td><code>Node-RED producer -&gt; Kafka [KAFKA-P-01]</code></td>
+              </tr>
+              <tr>
+                <td>Scenario ID</td>
+                <td><code>KAFKA-&lt;P|C&gt;-NN</code></td>
+                <td><code>KAFKA-C-03</code></td>
+              </tr>
+              <tr>
+                <td>Client object</td>
+                <td><code>&lt;Target&gt;&lt;Role&gt;</code> class</td>
+                <td><code>NodeRedOrdersClient</code></td>
+              </tr>
+              <tr>
+                <td>Builder</td>
+                <td><code>a&lt;Noun&gt;().with&lt;Field&gt;().build&lt;Shape&gt;()</code></td>
+                <td><code>anOrder().without('customerId').buildRequest()</code></td>
+              </tr>
+              <tr>
+                <td>Topic</td>
+                <td><code>&lt;domain&gt;.&lt;entity&gt;[.&lt;stage&gt;].v&lt;N&gt;</code></td>
+                <td><code>qa.orders.processed.v1</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 9 -->
+      <section id="run">
+        <h2><span class="num">9</span>How to run</h2>
+        <h3>Prerequisites</h3>
+        <ul>
+          <li>Docker Desktop (or Docker Engine) with Compose v2, and the engine running</li>
+          <li>Node.js 18.18 or newer (Node 20 or 22 LTS recommended)</li>
+          <li>Free ports <code>9092</code> (Kafka) and <code>1880</code> (Node-RED)</li>
+        </ul>
+
+        <h3>Steps</h3>
+        <pre><code><span class="c"># 0. Go to the project folder</span>
+cd "03_KAFKA Automation TESTING/PROJECT FILES"
+
+<span class="c"># 1. Start Kafka, create the topics, start Node-RED (waits until everything is healthy)</span>
+docker compose up -d --build --wait
+
+<span class="c"># 2. Install the test dependencies (cucumber, mocha, chai, kafkajs, eslint, prettier)</span>
+npm ci
+
+<span class="c"># 3. Run the tests</span>
+npm test                  <span class="c"># everything: Gherkin features, then Mocha specs</span>
+npm run test:bdd          <span class="c"># Gherkin features only → reports/cucumber-report.html</span>
+npm run test:bdd:producer <span class="c"># Gherkin KAFKA-P-01</span>
+npm run test:bdd:consumer <span class="c"># Gherkin KAFKA-C-01</span>
+npm run test:mocha        <span class="c"># Mocha + Chai specs for the same two scenarios</span>
+npm run test:unit         <span class="c"># 15 contract unit tests (no broker needed)</span>
+npm run test:bdd:dry      <span class="c"># every automated Gherkin step has a definition (no broker)</span>
+npm run lint              <span class="c"># ESLint + Prettier check</span>
+
+<span class="c"># 4. Shut down and remove containers, network and broker data</span>
+docker compose down -v</code></pre>
+
+        <h3>Useful while testing</h3>
+        <pre><code>docker compose ps                          <span class="c"># container health</span>
+docker compose logs -f node-red            <span class="c"># debug output and warnings from the flows</span>
+docker compose restart node-red            <span class="c"># consumer restart (KAFKA-C-03)</span>
+docker compose stop kafka / start kafka    <span class="c"># broker outage (KAFKA-P-03)</span>
+<span class="c"># Node-RED editor: http://localhost:1880</span></code></pre>
+        <p>
+          Environment overrides: <code>KAFKA_BROKERS</code> (default <code>localhost:9092</code>),
+          <code>NODE_RED_URL</code> (default <code>http://localhost:1880</code>), <code>TEST_WAIT_MS</code> (default
+          15000).
+        </p>
+      </section>
+
+      <!-- 10 -->
+      <section id="results">
+        <h2><span class="num">10</span>Test results</h2>
+        <p>Latest run: <strong>14 November 2026</strong> on Windows 11, Docker 27.4.0, Node.js 18.12.1.</p>
+        <div class="grid">
+          <div class="stat">
+            <div class="v">15 / 15</div>
+            <div class="l">Unit tests passing (12 ms)</div>
+          </div>
+          <div class="stat">
+            <div class="v">2 / 2</div>
+            <div class="l">Gherkin scenarios passing (24 / 24 steps)</div>
+          </div>
+          <div class="stat">
+            <div class="v">2 / 2</div>
+            <div class="l">Mocha integration specs passing (11 s)</div>
+          </div>
+          <div class="stat">
+            <div class="v">6 / 6</div>
+            <div class="l">Manual scenarios matched expected</div>
+          </div>
+          <div class="stat">
+            <div class="v">Clean</div>
+            <div class="l">ESLint + Prettier</div>
+          </div>
+        </div>
+
+        <h3>Environment startup</h3>
+        <pre><code>$ docker compose up -d --build --wait
+ Container kafka-qa-broker         Healthy
+ Container kafka-qa-kafka-init-1   Exited     <span class="c"># topics created, job done</span>
+ Container kafka-qa-node-red       Healthy
+
+$ docker compose ps
+NAME                IMAGE                     STATUS
+kafka-qa-broker     apache/kafka:3.9.1        Up (healthy)
+kafka-qa-node-red   kafka-qa-node-red:local   Up (healthy)</code></pre>
+
+        <h3>Gherkin features: <code>npm run test:bdd</code></h3>
+        <pre><code>&gt; cucumber-js
+
+<span class="g-tag">@consumer @automated @KAFKA-C-01 @smoke</span>
+<span class="g-kw">Scenario:</span> KAFKA-C-01 Consumer processes a valid event and produces a downstream result
+  <span class="pass">✔</span> Given the Kafka broker and Node-RED stack are running
+  <span class="pass">✔</span> And a unique test run id
+  <span class="pass">✔</span> Given the Node-RED consumer group is stable with at least one member
+  <span class="pass">✔</span> And a test subscriber is listening on the "processed" topic
+  <span class="pass">✔</span> And an OrderCreated event for customer "CUST-2002" in "EUR" with the items: …
+  <span class="pass">✔</span> When the event is published directly to the "orders" topic
+  <span class="pass">✔</span> Then exactly one record for the run arrives on the "processed" topic
+  <span class="pass">✔</span> And the record key is the order id
+  <span class="pass">✔</span> And the record has the headers: …
+  <span class="pass">✔</span> And the OrderProcessed result has: … (itemCount 4, totalAmount 71.8)
+  <span class="pass">✔</span> And the result references the source event and the published record
+  <span class="pass">✔</span> And the result has an ISO-8601 "processedAt" timestamp
+
+<span class="g-tag">@producer @automated @KAFKA-P-01 @smoke</span>
+<span class="g-kw">Scenario:</span> KAFKA-P-01 Producer publishes a valid event
+  <span class="pass">✔</span> Given the Kafka broker and Node-RED stack are running
+  <span class="pass">✔</span> And a unique test run id
+  <span class="pass">✔</span> Given a test subscriber is listening on the "orders" topic
+  <span class="pass">✔</span> And a valid order request for customer "CUST-1001" in "USD" with the items: …
+  <span class="pass">✔</span> When the order is posted to the producer with the run id as correlation id
+  <span class="pass">✔</span> Then the producer responds with HTTP 202 and status "PUBLISHED"
+  <span class="pass">✔</span> And exactly one record for the run arrives on the "orders" topic
+  <span class="pass">✔</span> And the record key is the order id
+  <span class="pass">✔</span> And the record partition and offset match the producer acknowledgement
+  <span class="pass">✔</span> And the record has the headers: …
+  <span class="pass">✔</span> And the record value is a valid "OrderCreated" envelope with the acknowledged event id
+  <span class="pass">✔</span> And the business fields in the record equal the order request
+
+<span class="pass">2 scenarios (2 passed)
+24 steps (24 passed)</span>
+0m10.874s (executing steps: 0m10.792s)</code></pre>
+        <p>
+          Cucumber also writes <code>reports/cucumber-report.html</code> (open it in a browser) and
+          <code>reports/cucumber-report.json</code>.
+        </p>
+
+        <h3>Mocha specs: <code>npm run test:mocha</code></h3>
+        <pre><code>&gt; mocha "test/**/*.int.test.js"
+
+  Kafka -&gt; Node-RED consumer -&gt; downstream result [KAFKA-C-01]
+    <span class="pass">✔</span> emits an OrderProcessed result with the computed totals for a valid OrderCreated event
+
+  Node-RED producer -&gt; Kafka [KAFKA-P-01]
+    <span class="pass">✔</span> publishes the OrderCreated event to the orders topic with key = orderId and the expected payload
+
+  <span class="pass">2 passing</span> (11s)</code></pre>
+
+        <h3>Unit tests: <code>npm run test:unit</code></h3>
+        <pre><code>  order-event contract (unit)
+    validateInput
+      <span class="pass">✔</span> accepts a valid order request
+      <span class="pass">✔</span> reports "orderId is required" when orderId is missing
+      <span class="pass">✔</span> reports "customerId is required" when customerId is missing
+      <span class="pass">✔</span> reports "currency is required" when currency is missing
+      <span class="pass">✔</span> reports "items is required" when items is missing
+      <span class="pass">✔</span> rejects an empty items array
+      <span class="pass">✔</span> rejects a lowercase currency code
+      <span class="pass">✔</span> rejects non-integer quantity and negative price
+      <span class="pass">✔</span> rejects a non-object body (null)
+      <span class="pass">✔</span> rejects a non-object body ([])
+      <span class="pass">✔</span> rejects a non-object body ("text")
+      <span class="pass">✔</span> rejects a non-object body (42)
+    validateEvent
+      <span class="pass">✔</span> accepts a complete OrderCreated event
+      <span class="pass">✔</span> requires the envelope fields
+    buildProcessedResult
+      <span class="pass">✔</span> computes itemCount and totalAmount rounded to 2 decimals
+
+  <span class="pass">15 passing</span> (12ms)</code></pre>
+
+        <h3>Lint: <code>npm run lint</code></h3>
+        <pre><code>&gt; eslint . &amp;&amp; prettier --check .
+Checking formatting...
+All matched files use Prettier code style!</code></pre>
+
+        <h3>Negative checks (the tests can fail)</h3>
+        <p>To confirm the tests don't pass vacuously, they were also run against a broken setup:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Gherkin, stack not running</td>
+                <td>
+                  <code
+                    >Kafka broker at localhost:9092 is not ready (Connection error: connect ECONNREFUSED ::1:9092).
+                    Start the stack with: docker compose up -d --build --wait</code
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td>Gherkin, expected <code>totalAmount</code> changed to 71.9 in the feature</td>
+                <td><code>AssertionError: totalAmount: expected 71.8 to deeply equal 71.9</code></td>
+              </tr>
+              <tr>
+                <td>Mocha, Node-RED stopped (consumer)</td>
+                <td>
+                  <code
+                    >Consumer group nodered-order-processor not ready after 15000 ms (last state: Empty with 0
+                    member(s))</code
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td>Mocha, Node-RED stopped (producer)</td>
+                <td><code>fetch failed</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 11 -->
+      <section id="limits">
+        <h2><span class="num">11</span>Known limitations</h2>
+        <ul>
+          <li>A single broker and single-partition topics, by design, to keep the setup small and reproducible.</li>
+          <li>
+            At-least-once delivery: a crash between the result write and the offset commit can produce a duplicate
+            result.
+          </li>
+          <li>A body that is not JSON is rejected by Node-RED's HTTP body parser (400, HTML) before the flow runs.</li>
+          <li>
+            Four scenarios (P-02, P-03, C-02, C-03) are tagged <code>@manual</code>. Their Gherkin is complete, so
+            automating one means adding step definitions and removing the tag. The code-structure guide in
+            <code>docs/e2e-workflow-and-code-structure.md</code> has a worked recipe for automating C-02 next.
+          </li>
+        </ul>
+        <p class="note">
+          On Node 18.12 the run prints a harmless
+          <code>ExperimentalWarning: The Fetch API is an experimental feature</code>. Node 18.18+ (or 20/22 LTS) is the
+          supported version and removes the warning.
+        </p>
+      </section>
+
+      <footer>
+        Kafka QA assessment · Node-RED 4.0.9 · Apache Kafka 3.9.1 · kafkajs 2.2.4 · Cucumber (Gherkin) + Mocha + Chai
+      </footer>
+    </div>
+  </body>
+</html>

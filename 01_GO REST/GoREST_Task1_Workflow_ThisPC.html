@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoREST Users API Tests</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1b; --muted: #5f5f5a;
+    --border: #e2e1dc; --accent: #2f5fd0; --code-bg: #f1f0ec;
+    --pass: #1f7a3d; --pass-bg: #e4f3e8; --fail: #b42318; --fail-bg: #fbe7e5;
+    --warn: #8a5a00; --warn-bg: #fbf0d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a29c;
+      --border: #34332f; --accent: #7fa2ff; --code-bg: #2a2926;
+      --pass: #6fd08f; --pass-bg: #1d3325; --fail: #ff8a80; --fail-bg: #3a1f1c;
+      --warn: #f0c36a; --warn-bg: #3a2f17;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a29c;
+    --border: #34332f; --accent: #7fa2ff; --code-bg: #2a2926;
+    --pass: #6fd08f; --pass-bg: #1d3325; --fail: #ff8a80; --fail-bg: #3a1f1c;
+    --warn: #f0c36a; --warn-bg: #3a2f17;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 16px 80px; }
+  header { margin-bottom: 32px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.35rem; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  p, li { color: var(--text); }
+  .lede { color: var(--muted); margin: 0; }
+  nav ol { margin: 16px 0 0; padding-left: 20px; columns: 2; color: var(--muted); }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  .num { color: var(--muted); font-weight: 500; margin-right: 6px; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .88em;
+         background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 14px 16px; overflow-x: auto; font-size: .85rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+  blockquote { margin: 0; padding: 12px 16px; border-left: 3px solid var(--accent);
+               background: var(--surface); border-radius: 0 8px 8px 0; }
+  blockquote p { margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: none; }
+  .flow { list-style: none; padding: 0; margin: 16px 0; counter-reset: step; }
+  .flow li { position: relative; padding: 12px 16px 12px 52px; margin-bottom: 8px;
+             background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .flow li::before { counter-increment: step; content: counter(step); position: absolute; left: 14px; top: 12px;
+                     width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--surface);
+                     font-weight: 600; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
+  .badge { display: inline-block; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .pass { color: var(--pass); background: var(--pass-bg); }
+  .fail { color: var(--fail); background: var(--fail-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 1.8rem; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: .88rem; }
+  .callout { border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
+  .callout.warn { border: 1px solid var(--warn); }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; }
+  @media (max-width: 600px) { nav ol { columns: 1; } h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>GoREST Users API: Task 1 test automation in Gherkin</h1>
+  <p class="lede">The whole workflow in one document: the problem statement, the approach, how the code is laid out end to end, how to run it, and the results of the latest run.</p>
+  <nav>
+    <ol>
+      <li><a href="#problem">Problem statement</a></li>
+      <li><a href="#solution">How we solved it</a></li>
+      <li><a href="#structure">E2E code structure</a></li>
+      <li><a href="#run">How to run</a></li>
+      <li><a href="#results">Test results</a></li>
+      <li><a href="#coverage">Requirement coverage</a></li>
+    </ol>
+  </nav>
+</header>
+
+<!-- 1 -->
+<h2 id="problem"><span class="num">1</span>Problem statement</h2>
+<blockquote>
+  <p><strong>Task 1: Automate API testing.</strong></p>
+  <p>Write an automation test using Postman or any tool of your choice.</p>
+  <p><strong>Endpoint:</strong> <code>https://gorest.co.in/</code><br>
+     <strong>Resource:</strong> <code>POST /public/v2/users</code></p>
+  <p>Run an HTTP POST on the above endpoint. Create a new user and assert that you can find the newly created user in the Get user endpoint (<code>https://gorest.co.in/public/v2/users/7014306</code>).</p>
+  <p>Assert the presence of the various properties in the returned object.</p>
+</blockquote>
+<p>Put another way, the test has three jobs:</p>
+<ul>
+  <li>Create a user with <code>POST /public/v2/users</code>.</li>
+  <li>Get that same user back with <code>GET /public/v2/users/{id}</code>. The ID <code>7014306</code> in the task is only an example. The test uses the ID returned by its own POST.</li>
+  <li>Check that the returned object has the expected properties and values.</li>
+</ul>
+
+<!-- 2 -->
+<h2 id="solution"><span class="num">2</span>How we solved it</h2>
+
+<h3>Tool choice</h3>
+<div class="table-wrap"><table>
+  <tr><th>Choice</th><th>Why</th></tr>
+  <tr><td><strong>Gherkin</strong> <code>.feature</code> files</td><td>Every test case is written in plain Given / When / Then language that testers, developers and business readers can all review. The feature files are the tests.</td></tr>
+  <tr><td><strong>Cucumber.js 11</strong></td><td>Runs the feature files, links each step to JavaScript, and produces console, HTML and JSON reports.</td></tr>
+  <tr><td><strong>Node.js 18+</strong> with native <code>fetch</code></td><td>No HTTP client library is needed, so there are fewer dependencies.</td></tr>
+  <tr><td><strong>Chai</strong> (<code>expect</code>)</td><td>Readable assertions inside the step definitions.</td></tr>
+  <tr><td>Token from <code>GOREST_TOKEN</code> env var</td><td>Keeps the token out of the source files, the feature files and the logs.</td></tr>
+</table></div>
+
+<h3>Core workflow (Task 1)</h3>
+<ol class="flow">
+  <li><strong>Check credentials.</strong> The Background step reads <code>GOREST_TOKEN</code>. If it is missing, the scenario fails right away with a clear "Missing credentials" message.</li>
+  <li><strong>Build a unique payload.</strong> A synthetic <code>name</code>, a unique <code>email</code> made from a timestamp plus a random number, a valid <code>gender</code> (male or female) and a valid <code>status</code> (active or inactive).</li>
+  <li><strong>POST /users.</strong> Assert <code>HTTP 201</code>, check that the response <code>id</code> is a positive integer, and capture it.</li>
+  <li><strong>GET /users/{id}</strong> with the captured ID. Assert <code>HTTP 200</code>.</li>
+  <li><strong>Check the properties.</strong> The object must contain <code>id, name, email, gender, status</code>. The <code>id</code> must equal the created ID, and the other four fields must equal the values that were sent.</li>
+  <li><strong>Clean up.</strong> An <code>After</code> hook deletes every user the scenario created. If the scenario already failed, cleanup errors only print a warning, so the original failure stays the reported cause.</li>
+</ol>
+
+<h3>Beyond the required task</h3>
+<p>The extended suite adds negative, validation, lifecycle and credential scenarios so the endpoint is covered more fully:</p>
+<ul>
+  <li><strong>Authentication:</strong> POST with no token and with an invalid token both return <code>401</code>.</li>
+  <li><strong>Validation:</strong> a duplicate email, a bad email format, an invalid gender, an invalid status and an empty body each return <code>422</code>, with an error for the correct field. The three single-field cases share one <code>Scenario Outline</code> with an <code>Examples</code> table.</li>
+  <li><strong>Lifecycle:</strong> the response is JSON with exactly the 5 keys, PATCH updates are visible through GET, and DELETE returns <code>204</code> followed by <code>404</code> on GET and on a second DELETE.</li>
+  <li><strong>Credentials:</strong> an unset or whitespace-only token fails before any request is sent. These run offline.</li>
+</ul>
+
+<!-- 3 -->
+<h2 id="structure"><span class="num">3</span>E2E code structure</h2>
+<pre><code>qa-assessment-task1-extended/
+├── package.json                      # cucumber + chai; npm test → cucumber-js; Node ≥ 18
+├── cucumber.js                       # feature paths, step/support paths, report formats
+├── .gitignore                        # node_modules, .env files, logs, reports/
+├── DOCS/
+│   └── README.md                     # setup and run commands
+├── features/                         # ◄ TEST CASES IN GHERKIN
+│   ├── 01-create-and-get.feature     # ★ REQUIRED TASK 1: POST → GET → assert properties
+│   ├── 02-authentication.feature     # 401 with no token or an invalid token
+│   ├── 03-validation.feature         # 422 field validation (Scenario Outline + Examples)
+│   ├── 04-lifecycle.feature          # JSON shape, PATCH, DELETE → 404
+│   ├── 05-credentials.feature        # missing-token check (offline)
+│   ├── step_definitions/
+│   │   └── users.steps.js            # Given/When/Then → JavaScript + Chai assertions
+│   └── support/
+│       ├── gorest.js                 # API client: request, payloads, token check, helpers
+│       └── world.js                  # per-scenario state (World), 20 s timeout, After cleanup hook
+└── reports/                          # generated on every run (git-ignored)
+    ├── cucumber-report.html
+    └── cucumber-report.json</code></pre>
+
+<h3>How the layers fit together</h3>
+<div class="table-wrap"><table>
+  <tr><th>Layer</th><th>File</th><th>Responsibility</th></tr>
+  <tr><td>Specification</td><td><code>features/*.feature</code></td><td>The test cases in Gherkin. Each <code>Scenario</code> is one test.</td></tr>
+  <tr><td>Glue</td><td><code>step_definitions/users.steps.js</code></td><td>Maps each Gherkin line to code using Cucumber expressions such as <code>the response status should be {int}</code>.</td></tr>
+  <tr><td>State + hooks</td><td><code>support/world.js</code></td><td>A fresh <code>GoRestWorld</code> for each scenario holds the token, payload, last response, created user and cleanup IDs. The <code>After</code> hook deletes test users.</td></tr>
+  <tr><td>API client</td><td><code>support/gorest.js</code></td><td><code>request()</code>, <code>buildUserPayload()</code>, <code>readToken()</code>, <code>describeResponse()</code> and <code>errorFields()</code>. Request headers are never logged.</td></tr>
+</table></div>
+
+<h3>The required test: <code>features/01-create-and-get.feature</code></h3>
+<pre><code>@task1 @smoke @requires-token
+Feature: Create a user and retrieve it by ID
+
+  Background:
+    Given the base URL is "https://gorest.co.in/public/v2"
+    And a valid bearer token is read from the "GOREST_TOKEN" environment variable
+    And a user payload with a unique name and email, a valid gender and a valid status
+
+  Scenario: POST /users creates a user and returns HTTP 201 with an ID
+    When I send a POST request to "/users" with the user payload
+    Then the response status should be 201
+    And the response body should be a JSON object
+    And the response "id" should be a positive integer
+    And I store the response "id" as the created user ID
+    And the created user is tracked for cleanup
+
+  Scenario: GET /users/{id} returns HTTP 200 and the submitted values
+    Given a user was created with the user payload
+    When I send a GET request to "/users/{created user ID}"
+    Then the response status should be 200
+    And the response body should contain the keys:
+      | id | name | email | gender | status |   (one key per row in the file)
+    And the response "id" should equal the created user ID
+    And the response fields should match the submitted payload:
+      | name | email | gender | status |</code></pre>
+
+<h3>Matching step definitions (excerpt)</h3>
+<pre><code>When('I send a POST request to {string} with the user payload', async function (path) {
+  const res = await this.send('POST', path, { body: this.payload });
+  this.track(res.body);                      // the After hook deletes it
+});
+
+Then('the response status should be {int}', function (status) {
+  expect(this.response.status, api.describeResponse('Last request', this.response)).to.equal(status);
+});
+
+Then('the response body should contain the keys:', function (table) {
+  expect(this.response.body).to.be.an('object').that.includes.all.keys(...columnValues(table));
+});
+
+Then('the response fields should match the submitted payload:', function (table) {
+  for (const field of columnValues(table)) {
+    expect(this.response.body[field], field).to.equal(this.payload[field]);
+  }
+});</code></pre>
+
+<h3>Request flow</h3>
+<pre><code>cucumber-js ──► new GoRestWorld()               (fresh state for each scenario)
+  │
+  ├─► Background: read GOREST_TOKEN               (fail fast if missing)
+  │
+  ├─► POST /public/v2/users   {name, email, gender, status}
+  │      ◄── 201 {id, ...}    → store id, track it for cleanup
+  │
+  ├─► GET  /public/v2/users/{id}
+  │      ◄── 200 {id, name, email, gender, status} → assert keys and values
+  │
+  └─► After hook: DELETE /public/v2/users/{id}   (204 or 404 both count as clean)</code></pre>
+
+<!-- 4 -->
+<h2 id="run"><span class="num">4</span>How to run</h2>
+<div class="card">
+  <strong>You need:</strong> Node.js 18 or newer (Node 20+ removes the "Fetch API is experimental" warning) and a GoREST access token from <code>https://gorest.co.in/consumer/login</code>.
+</div>
+
+<h3>PowerShell (Windows)</h3>
+<pre><code>cd "C:\Users\a_hos\Downloads\00_Assignment V2\00_Assignment\01_GO REST\qa-assessment-task1-extended"
+npm install
+$env:GOREST_TOKEN = "&lt;your-gorest-token&gt;"
+npm test
+Remove-Item Env:GOREST_TOKEN</code></pre>
+
+<h3>Bash (Git Bash, macOS, Linux)</h3>
+<pre><code>cd "/c/Users/a_hos/Downloads/00_Assignment V2/00_Assignment/01_GO REST/qa-assessment-task1-extended"
+npm install
+read -rsp "GoREST token: " GOREST_TOKEN &amp;&amp; echo &amp;&amp; export GOREST_TOKEN
+npm test
+unset GOREST_TOKEN</code></pre>
+
+<h3>Useful commands</h3>
+<div class="table-wrap"><table>
+  <tr><th>Command</th><th>Runs</th></tr>
+  <tr><td><code>npm test</code></td><td>All 14 scenarios</td></tr>
+  <tr><td><code>npm run test:task1</code></td><td>Only the required Task 1 scenarios (<code>@task1</code>)</td></tr>
+  <tr><td><code>npm run test:no-token</code></td><td>Only the scenarios that need no token (<code>not @requires-token</code>)</td></tr>
+  <tr><td><code>npx cucumber-js features/03-validation.feature</code></td><td>A single feature file</td></tr>
+  <tr><td><code>npx cucumber-js --dry-run</code></td><td>Checks that every step has a definition, without sending requests</td></tr>
+</table></div>
+<p>Every run writes <code>reports/cucumber-report.html</code> (open it in a browser) and <code>reports/cucumber-report.json</code>. The exit code is 0 only when every scenario passes, so it works as a CI gate.</p>
+
+<!-- 5 -->
+<h2 id="results"><span class="num">5</span>Test results</h2>
+<p>Latest run: <strong>14 Nov 2026</strong>, Node <code>v18.12.1</code>, Windows 11, Cucumber.js 11.3.0, command <code>npx cucumber-js</code>.</p>
+
+<div class="callout warn">
+  <strong>No token was set for this run.</strong> <code>GOREST_TOKEN</code> was not set in this environment. The 4 scenarios that need no token all passed. The 10 scenarios tagged <code>@requires-token</code> stopped at the token step with the intended "Missing credentials" message. The live POST → GET workflow has <strong>not been verified yet</strong>. Set a token and run <code>npm test</code> (see <a href="#run">section 4</a>), then update this section.
+</div>
+
+<div class="stats">
+  <div class="stat"><b style="color:var(--pass)">4</b><span>scenarios passed</span></div>
+  <div class="stat"><b style="color:var(--warn)">10</b><span>blocked: token missing</span></div>
+  <div class="stat"><b>14</b><span>scenarios in total</span></div>
+  <div class="stat"><b>100</b><span>steps, all defined (dry run)</span></div>
+</div>
+
+<div class="table-wrap"><table>
+  <tr><th>Feature</th><th>Scenario</th><th>Result</th></tr>
+  <tr><td>01 Task 1</td><td>POST /users → 201 with an ID</td><td><span class="badge warn">needs token</span></td></tr>
+  <tr><td>01 Task 1</td><td>GET /users/{id} → 200 with the submitted values</td><td><span class="badge warn">needs token</span></td></tr>
+  <tr><td>02 Authentication</td><td>POST without a token → 401 and creates nothing</td><td><span class="badge pass">passed (live API)</span></td></tr>
+  <tr><td>02 Authentication</td><td>POST with an invalid token → 401</td><td><span class="badge pass">passed (live API)</span></td></tr>
+  <tr><td>03 Validation</td><td>Duplicate email, invalid email, gender, status, empty body (5 scenarios)</td><td><span class="badge warn">needs token</span></td></tr>
+  <tr><td>04 Lifecycle</td><td>JSON shape, PATCH, DELETE → 404 (3 scenarios)</td><td><span class="badge warn">needs token</span></td></tr>
+  <tr><td>05 Credentials</td><td>Unset token fails fast with a clear message</td><td><span class="badge pass">passed (offline)</span></td></tr>
+  <tr><td>05 Credentials</td><td>Whitespace-only token is treated as missing</td><td><span class="badge pass">passed (offline)</span></td></tr>
+</table></div>
+
+<h3>Console output (excerpt)</h3>
+<pre><code>$ npx cucumber-js --dry-run --format summary
+14 scenarios (14 skipped)
+100 steps (100 skipped)                        ← no undefined or ambiguous steps
+
+$ npx cucumber-js
+  Scenario: POST /users creates a user and returns HTTP 201 with an ID
+    Given the base URL is "https://gorest.co.in/public/v2"
+    And a valid bearer token is read from the "GOREST_TOKEN" environment variable
+    × failed
+      Error: Missing credentials: the GOREST_TOKEN environment variable is not set.
+      Get a token at https://gorest.co.in/consumer/login and set GOREST_TOKEN
+      before running "npm test" (see DOCS/README.md).
+  ...
+14 scenarios (10 failed, 4 passed)
+100 steps (10 failed, 63 skipped, 27 passed)
+
+$ npm run test:no-token
+  Scenario: POST /users without a token returns 401 and creates nothing
+  Scenario: POST /users with an invalid token returns 401
+  Scenario: An unset token fails fast with a clear message
+  Scenario: A whitespace-only token is treated as missing
+4 scenarios (4 passed)
+17 steps (17 passed)                           ← exit code 0</code></pre>
+
+<p>What this run shows:</p>
+<ul>
+  <li>Every Gherkin step is linked to code. The dry run found no undefined or ambiguous steps.</li>
+  <li>The live API rejects requests with no token or a bad token (<code>401</code>), so the endpoint is reachable and auth is enforced.</li>
+  <li>When the token is missing, scenarios fail fast with a readable message instead of sending requests that are bound to fail, and no secret is printed.</li>
+</ul>
+
+<h3>Expected result with a valid token</h3>
+<pre><code>14 scenarios (14 passed)
+100 steps (100 passed)</code></pre>
+<p>This is the expected summary, not a recorded one. Replace it with the real output, or attach <code>reports/cucumber-report.html</code>, after a run with a token.</p>
+
+<!-- 6 -->
+<h2 id="coverage"><span class="num">6</span>Requirement coverage</h2>
+<div class="table-wrap"><table>
+  <tr><th>Requirement</th><th>Where it is covered</th><th>Status</th></tr>
+  <tr><td>Use Postman or any tool</td><td>Gherkin + Cucumber.js + Chai on Node.js</td><td><span class="badge pass">done</span></td></tr>
+  <tr><td>HTTP POST /public/v2/users creates a user</td><td><code>01-create-and-get.feature</code>, scenario 1 (asserts 201 and the ID)</td><td><span class="badge pass">implemented</span></td></tr>
+  <tr><td>Find the new user via GET /users/{id}</td><td><code>01-create-and-get.feature</code>, scenario 2 (uses the created ID)</td><td><span class="badge pass">implemented</span></td></tr>
+  <tr><td>Assert the properties of the returned object</td><td>Keys <code>id, name, email, gender, status</code>, plus value checks</td><td><span class="badge pass">implemented</span></td></tr>
+  <tr><td>Test cases written in Gherkin</td><td>All 14 scenarios in <code>features/*.feature</code></td><td><span class="badge pass">done</span></td></tr>
+  <tr><td>Live run against GoREST</td><td>Needs <code>GOREST_TOKEN</code></td><td><span class="badge warn">not yet verified</span></td></tr>
+</table></div>
+
+<footer>Generated 14 Nov 2026 · paths updated for this PC 16 Nov 2026 · project: <code>01_GO REST/qa-assessment-task1-extended</code></footer>
+</main>
+</body>
+</html>
