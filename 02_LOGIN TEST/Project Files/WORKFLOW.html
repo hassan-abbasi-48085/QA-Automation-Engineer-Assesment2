@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login Test Workflow</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f3f1ec;
+    --text: #1f1e1b; --muted: #5f5c55; --border: #e2ded5;
+    --accent: #2f5fb3; --accent-soft: #e7eefb;
+    --pass: #1f7a46; --pass-soft: #e3f3ea; --fail: #b3261e;
+    --code-bg: #f5f3ee; --code-text: #2a2925;
+    --g-kw: #8a3ab9; --g-tag: #1f7a46; --g-str: #a6541a; --g-tbl: #2f5fb3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #1e1e1b; --surface-2: #262622;
+      --text: #ecebe6; --muted: #a8a59c; --border: #36352f;
+      --accent: #8fb3f0; --accent-soft: #1f2a3d;
+      --pass: #6fcf97; --pass-soft: #1b2e23; --fail: #f2948c;
+      --code-bg: #1a1a17; --code-text: #e4e2db;
+      --g-kw: #d0a2f0; --g-tag: #6fcf97; --g-str: #f0b27a; --g-tbl: #8fb3f0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --surface: #1e1e1b; --surface-2: #262622;
+    --text: #ecebe6; --muted: #a8a59c; --border: #36352f;
+    --accent: #8fb3f0; --accent-soft: #1f2a3d;
+    --pass: #6fcf97; --pass-soft: #1b2e23; --fail: #f2948c;
+    --code-bg: #1a1a17; --code-text: #e4e2db;
+    --g-kw: #d0a2f0; --g-tag: #6fcf97; --g-str: #f0b27a; --g-tbl: #8fb3f0;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 16px 80px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 8px; }
+  .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -.01em; }
+  h2 { font-size: 22px; margin: 48px 0 12px; padding-top: 8px; letter-spacing: -.005em; }
+  h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 8px; }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; }
+  .lede { color: var(--muted); font-size: 17px; margin: 0; }
+  a { color: var(--accent); }
+  nav.toc { margin: 24px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav.toc a {
+    text-decoration: none; font-size: 14px; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 999px;
+  }
+  nav.toc a:hover { border-color: var(--accent); }
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0 0; }
+  .meta div { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .meta dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .meta dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+  blockquote {
+    margin: 0 0 16px; padding: 14px 18px; background: var(--surface);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px;
+  }
+  blockquote p:last-child { margin: 0; }
+  .callout { background: var(--accent-soft); border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
+  .callout p:last-child { margin: 0; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 16px;
+    font: 13.5px/1.55 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .c { color: var(--muted); }
+  .kw { color: var(--g-kw); font-weight: 600; }
+  .tg { color: var(--g-tag); }
+  .st { color: var(--g-str); }
+  .tb { color: var(--g-tbl); }
+  .ok { color: var(--pass); }
+  .bad { color: var(--fail); }
+  .table-wrap { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; background: var(--surface); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 600; font-size: 13px; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; }
+  .tag.primary { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+  .pass { color: var(--pass); font-weight: 600; white-space: nowrap; }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0 0 16px; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 14px 40px; }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps strong { display: block; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0 0 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .stat .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .stat .v.ok { color: var(--pass); }
+  .stat .l { font-size: 13px; color: var(--muted); }
+  figure { margin: 0 0 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  svg .box { fill: var(--surface-2); stroke: var(--border); }
+  svg .box.hl { fill: var(--accent-soft); stroke: var(--accent); }
+  svg .t { fill: var(--text); font: 600 13px system-ui, sans-serif; }
+  svg .s { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+  svg .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+  svg .ah { fill: var(--muted); }
+  ul { padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 6px; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  @media (max-width: 560px) {
+    h1 { font-size: 26px; }
+    h2 { font-size: 20px; }
+  }
+  @media print {
+    nav.toc { display: none; }
+    h2 { break-after: avoid; }
+    pre, table, figure { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">QA Automation Assessment · Task 2</p>
+  <h1>Login UI Test: Full Workflow</h1>
+  <p class="lede">The problem statement, how it was solved, the test cases in Gherkin, how the Playwright + playwright-bdd + Page Object Model suite is laid out, how to run it, and the results of the latest run.</p>
+  <dl class="meta">
+    <div><dt>Site under test</dt><dd>practicetestautomation.com</dd></div>
+    <div><dt>Test cases</dt><dd>Manual + Gherkin (BDD)</dd></div>
+    <div><dt>Tooling</dt><dd>Playwright 1.65 · playwright-bdd 9.2</dd></div>
+    <div><dt>Latest run</dt><dd class="pass">8 / 8 passed</dd></div>
+  </dl>
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1. Problem</a>
+    <a href="#solution">2. Approach</a>
+    <a href="#gherkin">3. Gherkin test cases</a>
+    <a href="#structure">4. Code structure</a>
+    <a href="#flow">5. E2E flow</a>
+    <a href="#run">6. How to run</a>
+    <a href="#results">7. Results</a>
+    <a href="#practices">8. Best practices</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<h2 id="problem"><span class="num">1</span>Problem statement</h2>
+<blockquote>
+  <p><strong>Task 2: UI Automation testing.</strong></p>
+  <p>Choose any webpage of your choice.</p>
+  <p>Write a manual test case with at least 3 test scenarios.</p>
+  <p>Automate one of the above test scenarios using any tool of your choice.</p>
+</blockquote>
+<p>That breaks down into three deliverables. Test cases are also required in Gherkin.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>#</th><th>Requirement</th><th>Delivered</th><th>Where</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Choose a webpage</td><td>Practice Test Automation, “Test login” page</td><td><code>practice-test-login/</code></td></tr>
+    <tr><td>2</td><td>Manual test case, at least 3 scenarios</td><td>8 scenarios, each with preconditions, test data, steps, expected results and an execution record</td><td><code>MANUAL_TEST_CASE.md</code></td></tr>
+    <tr><td>2a</td><td>Test cases in Gherkin</td><td>The same 8 scenarios in Given / When / Then, each tagged with its ID</td><td><code>features/login.feature</code></td></tr>
+    <tr><td>3</td><td>Automate one scenario</td><td>TC-LOGIN-01 is the primary one. All 8 Gherkin scenarios run as extra coverage.</td><td><code>steps/</code>, <code>pages/</code></td></tr>
+  </tbody>
+</table></div>
+
+<!-- 2 -->
+<h2 id="solution"><span class="num">2</span>How we solved it</h2>
+<ol class="steps">
+  <li><strong>Picked a stable, public target</strong>The practice login page publishes its own demo credentials (<code>student</code> / <code>Password123</code>) and has fixed error messages. That makes results repeatable and means no private data is involved.</li>
+  <li><strong>Explored the page manually</strong>We noted the field labels, the button name, the redirect URL after login, and how the error banner appears. TC-LOGIN-01 to 03 were first run by hand on 2026-11-12.</li>
+  <li><strong>Wrote the manual test cases</strong>There are 3 required scenarios plus 5 more: positive, negative, UI/security, logout and recovery. Each has an ID so it can be traced through to the automation.</li>
+  <li><strong>Wrote the same cases in Gherkin</strong>One <code>.feature</code> file holds all 8 scenarios in plain Given / When / Then, with the test data written into the steps. It is readable by non-developers and is the file the automation actually runs.</li>
+  <li><strong>Chose Playwright + playwright-bdd</strong><code>playwright-bdd</code> turns the Gherkin into Playwright tests. That keeps Playwright’s auto-waiting, assertions that retry on their own, parallel workers, traces and HTML reports, and adds a Cucumber report.</li>
+  <li><strong>Built the layers: page objects, then fixtures, then steps</strong>Locators and page actions live in <code>pages/</code>. The page objects are passed to each scenario as Playwright fixtures, and the step definitions are thin wrappers that call them.</li>
+  <li><strong>Handled the one tricky element</strong>The error banner <code>#error</code> is always in the page, hidden only with <code>opacity: 0</code>, and already says “Your username is invalid!” before you click Submit. A plain visibility check would pass falsely, so the page object waits for the <code>show</code> class before checking the text.</li>
+  <li><strong>Ran it against the live site and checked it can fail</strong>See <a href="#results">section 7</a>.</li>
+</ol>
+
+<!-- 3 -->
+<h2 id="gherkin"><span class="num">3</span>Test cases in Gherkin</h2>
+<p>This is the complete <code>features/login.feature</code>. Each scenario has its own <code>@TC-LOGIN-0x</code> tag, so any single case can be run by ID. TC-LOGIN-02 to 05 share one Scenario Outline with one tagged <code>Examples</code> block per case.</p>
+<pre><code><span class="tg">@login</span>
+<span class="kw">Feature:</span> Login on the Practice Test Automation site
+  As a user of the practice site
+  I want to log in with my username and password
+  So that I can reach the secured page, and be refused with a clear message when my details are wrong
+
+  Site: https://practicetestautomation.com/practice-test-login/
+  The credentials student / Password123 are public demo credentials published on the page.
+
+  <span class="kw">Background:</span>
+    <span class="kw">Given</span> I open the login page
+
+  <span class="tg">@TC-LOGIN-01 @primary @smoke @positive</span>
+  <span class="kw">Scenario:</span> TC-LOGIN-01 Successful login with valid credentials
+    <span class="kw">When</span> I log in with username <span class="st">"student"</span> and password <span class="st">"Password123"</span>
+    <span class="kw">Then</span> I am logged in as <span class="st">"student"</span>
+
+  <span class="tg">@negative</span>
+  <span class="kw">Scenario Outline:</span> &lt;id&gt; Login is rejected: &lt;case&gt;
+    <span class="kw">When</span> I log in with username <span class="st">"&lt;username&gt;"</span> and password <span class="st">"&lt;password&gt;"</span>
+    <span class="kw">Then</span> I see the error message <span class="st">"&lt;error&gt;"</span>
+    <span class="kw">And</span> I am still on the login page
+
+    <span class="tg">@TC-LOGIN-02</span>
+    <span class="kw">Examples:</span> Incorrect password
+      <span class="tb">| id          | case                               | username | password          | error                     |</span>
+      <span class="tb">| TC-LOGIN-02 | valid username, incorrect password | student  | incorrectPassword | Your password is invalid! |</span>
+
+    <span class="tg">@TC-LOGIN-03</span>
+    <span class="kw">Examples:</span> Both fields blank
+      <span class="tb">| id          | case              | username | password | error                     |</span>
+      <span class="tb">| TC-LOGIN-03 | both fields blank |          |          | Your username is invalid! |</span>
+
+    <span class="tg">@TC-LOGIN-04</span>
+    <span class="kw">Examples:</span> Invalid username
+      <span class="tb">| id          | case                             | username      | password    | error                     |</span>
+      <span class="tb">| TC-LOGIN-04 | invalid username, valid password | incorrectUser | Password123 | Your username is invalid! |</span>
+
+    <span class="tg">@TC-LOGIN-05</span>
+    <span class="kw">Examples:</span> Blank password
+      <span class="tb">| id          | case                           | username | password | error                     |</span>
+      <span class="tb">| TC-LOGIN-05 | valid username, blank password | student  |          | Your password is invalid! |</span>
+
+  <span class="tg">@TC-LOGIN-06 @security</span>
+  <span class="kw">Scenario:</span> TC-LOGIN-06 Password field masks the typed value
+    <span class="kw">When</span> I type <span class="st">"Password123"</span> into the password field
+    <span class="kw">Then</span> the password field is masked
+    <span class="kw">And</span> the password field holds the value <span class="st">"Password123"</span>
+
+  <span class="tg">@TC-LOGIN-07 @positive</span>
+  <span class="kw">Scenario:</span> TC-LOGIN-07 Log out returns to the login page
+    <span class="kw">Given</span> I have logged in with username <span class="st">"student"</span> and password <span class="st">"Password123"</span>
+    <span class="kw">When</span> I log out
+    <span class="kw">Then</span> I am back on the login page with the login form shown
+
+  <span class="tg">@TC-LOGIN-08 @recovery</span>
+  <span class="kw">Scenario:</span> TC-LOGIN-08 Valid login succeeds after a failed attempt
+    <span class="kw">Given</span> I have failed to log in with username <span class="st">"student"</span> and password <span class="st">"incorrectPassword"</span>
+    <span class="kw">When</span> I log in with username <span class="st">"student"</span> and password <span class="st">"Password123"</span>
+    <span class="kw">Then</span> I am logged in as <span class="st">"student"</span></code></pre>
+
+<h3>Scenario summary</h3>
+<div class="table-wrap"><table>
+  <thead><tr><th>ID</th><th>Scenario</th><th>Expected</th><th>Tags</th></tr></thead>
+  <tbody>
+    <tr><td>TC-LOGIN-01</td><td>Successful login <span class="tag primary">primary</span></td><td>Goes to <code>/logged-in-successfully/</code>; heading, “Congratulations student…” and Log out are shown</td><td><code>@smoke @positive</code></td></tr>
+    <tr><td>TC-LOGIN-02</td><td>Incorrect password</td><td>“Your password is invalid!”; stays on login page</td><td><code>@negative</code></td></tr>
+    <tr><td>TC-LOGIN-03</td><td>Both fields blank</td><td>“Your username is invalid!”; stays on login page</td><td><code>@negative</code></td></tr>
+    <tr><td>TC-LOGIN-04</td><td>Invalid username</td><td>“Your username is invalid!”; stays on login page</td><td><code>@negative</code></td></tr>
+    <tr><td>TC-LOGIN-05</td><td>Blank password</td><td>“Your password is invalid!”; stays on login page</td><td><code>@negative</code></td></tr>
+    <tr><td>TC-LOGIN-06</td><td>Password is masked</td><td>Input stays <code>type="password"</code> and keeps the value</td><td><code>@security</code></td></tr>
+    <tr><td>TC-LOGIN-07</td><td>Log out</td><td>Returns to the login page with the form visible</td><td><code>@positive</code></td></tr>
+    <tr><td>TC-LOGIN-08</td><td>Login after a failed attempt</td><td>Error first, then a successful login</td><td><code>@recovery</code></td></tr>
+  </tbody>
+</table></div>
+<p>The manual version, with preconditions, numbered steps and the execution record, is in <code>MANUAL_TEST_CASE.md</code>.</p>
+
+<!-- 4 -->
+<h2 id="structure"><span class="num">4</span>E2E code structure</h2>
+<pre><code>Project Files/
+├── features/
+│   └── login.feature           <span class="c"># Gherkin test cases: 8 scenarios, tagged by ID</span>
+├── steps/
+│   ├── fixtures.js             <span class="c"># page objects as Playwright fixtures; createBdd() → Given/When/Then</span>
+│   └── login.steps.js          <span class="c"># step definitions: Gherkin sentence → page-object call</span>
+├── pages/                      <span class="c"># Page Object Model layer</span>
+│   ├── LoginPage.js            <span class="c"># goto(), login(), expectError(), expectAnyError(), expectOnLoginPage()</span>
+│   └── LoggedInPage.js         <span class="c"># expectLoaded(), logout()</span>
+├── playwright.config.js        <span class="c"># defineBddConfig + baseURL, timeouts, reporters, Chromium project</span>
+├── package.json                <span class="c"># @playwright/test 1.65.0, playwright-bdd 9.2.1, Node &gt;=20, npm scripts</span>
+├── package-lock.json
+├── MANUAL_TEST_CASE.md         <span class="c"># manual test cases + execution record</span>
+├── README.md                   <span class="c"># quick start</span>
+├── WORKFLOW.html               <span class="c"># this document</span>
+└── .vscode/settings.json       <span class="c"># points the Cucumber VS Code extension at steps/</span>
+
+<span class="c"># generated on each run (git-ignored)</span>
+.features-gen/                  <span class="c"># Playwright specs generated by bddgen from the .feature file</span>
+playwright-report/  cucumber-report/  test-results/</code></pre>
+
+<h3>Layers and what each one owns</h3>
+<div class="table-wrap"><table>
+  <thead><tr><th>Layer</th><th>File</th><th>Responsibility</th><th>Never contains</th></tr></thead>
+  <tbody>
+    <tr><td>Feature (Gherkin)</td><td><code>features/login.feature</code></td><td>Behaviour and test data, in plain language</td><td>Code, selectors</td></tr>
+    <tr><td>Step definitions</td><td><code>steps/login.steps.js</code></td><td>Map each sentence to page-object calls</td><td>Selectors, URLs</td></tr>
+    <tr><td>Fixtures</td><td><code>steps/fixtures.js</code></td><td>Create fresh page objects for each scenario</td><td>Test logic</td></tr>
+    <tr><td>Page objects</td><td><code>pages/*.js</code></td><td>Locators, page actions, page-level assertions</td><td>Test data, scenario logic</td></tr>
+    <tr><td>Config</td><td><code>playwright.config.js</code></td><td>Where features and steps are, base URL, browser, timeouts, retries, reporting</td><td>Test steps</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Fixtures: <code>steps/fixtures.js</code></h3>
+<pre><code>const { test: base, createBdd } = require('playwright-bdd');
+const { LoginPage } = require('../pages/LoginPage');
+const { LoggedInPage } = require('../pages/LoggedInPage');
+
+const test = base.extend({
+  loginPage:    async ({ page }, use) =&gt; { await use(new LoginPage(page)); },
+  loggedInPage: async ({ page }, use) =&gt; { await use(new LoggedInPage(page)); },
+});
+
+const { Given, When, Then } = createBdd(test);
+module.exports = { test, Given, When, Then };</code></pre>
+
+<h3>Step definitions: <code>steps/login.steps.js</code> (excerpt)</h3>
+<pre><code>Given('I open the login page', async ({ loginPage }) =&gt; {
+  await loginPage.goto();
+});
+
+When('I log in with username {string} and password {string}',
+  async ({ loginPage }, username, password) =&gt; {
+    await loginPage.login(username, password);
+  });
+
+Then('I am logged in as {string}', async ({ loggedInPage }, username) =&gt; {
+  await loggedInPage.expectLoaded(username);
+});
+
+Then('I see the error message {string}', async ({ loginPage }, message) =&gt; {
+  await loginPage.expectError(message);
+});
+
+Then('I am still on the login page', async ({ loginPage, loggedInPage }) =&gt; {
+  await loginPage.expectOnLoginPage();
+  await loggedInPage.expectNotLoggedIn();
+});
+
+Then('the password field is masked', async ({ loginPage }) =&gt; {
+  await loginPage.expectPasswordMasked();
+});
+<span class="c">// … plus: I have logged in / I have failed to log in / I type … into the password field /</span>
+<span class="c">//         I log out / the password field holds the value / back on the login page</span></code></pre>
+<p>Every step is a page-object method call. The step file contains no locators, selectors or <code>expect()</code> calls.</p>
+
+<h3>Page object: <code>pages/LoginPage.js</code></h3>
+<pre><code>class LoginPage {
+  constructor(page) {
+    this.page = page;
+    this.path = '/practice-test-login/';
+    this.usernameInput = page.getByLabel('Username');
+    this.passwordInput = page.getByLabel('Password');
+    this.submitButton  = page.getByRole('button', { name: 'Submit' });
+    <span class="c">// #error is always in the DOM (opacity 0); the site reveals it by adding the "show" class.</span>
+    this.errorMessage  = page.locator('#error');
+  }
+
+  async goto() {
+    await this.page.goto(this.path);
+    await expect(this.submitButton).toBeVisible();
+  }
+
+  async login(username, password) {
+    await this.usernameInput.fill(username);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+
+  async typePassword(password) { await this.passwordInput.fill(password); }
+
+  <span class="c">// ---------- Assertions ----------</span>
+  async expectError(text) {
+    await this.expectAnyError();
+    await expect(this.errorMessage).toHaveText(text);
+  }
+
+  async expectAnyError() {
+    await expect(this.errorMessage).toHaveClass(/\bshow\b/);
+  }
+
+  async expectPasswordMasked()       { await expect(this.passwordInput).toHaveAttribute('type', 'password'); }
+  async expectPasswordValue(value)   { await expect(this.passwordInput).toHaveValue(value); }
+  async expectLoginFormShown()       { <span class="c">/* username, password and Submit visible */</span> }
+
+  async expectOnLoginPage() {
+    await expect(this.page).toHaveURL(/\/practice-test-login\/?$/);
+    await expect(this.submitButton).toBeVisible();
+  }
+}</code></pre>
+<p><code>LoggedInPage.js</code> follows the same pattern. It has a heading, a welcome-text locator and the Log out link. <code>expectLoaded(username)</code> checks the URL, heading, welcome text and Log out link. <code>expectNotLoggedIn()</code> checks that the Log out link is absent, and <code>logout()</code> clicks Log out. Both page objects group their code into Locators, Actions and Assertions, and declare parameter types in JSDoc, so <code>// @ts-check</code> passes with no errors.</p>
+
+<h3>Config: <code>playwright.config.js</code> (BDD part)</h3>
+<pre><code>const { defineBddConfig, cucumberReporter } = require('playwright-bdd');
+
+const testDir = defineBddConfig({
+  features: 'features/**/*.feature',
+  steps: 'steps/**/*.js',
+});
+
+module.exports = defineConfig({
+  testDir,                                   <span class="c">// → .features-gen/</span>
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    cucumberReporter('html', { outputFile: 'cucumber-report/index.html' }),
+  ],
+  use: { baseURL: 'https://practicetestautomation.com', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  <span class="c">// … timeouts, fullyParallel, forbidOnly/retries on CI, Chromium project</span>
+});</code></pre>
+
+<!-- 5 -->
+<h2 id="flow"><span class="num">5</span>End-to-end flow</h2>
+<figure>
+  <svg viewBox="0 0 860 332" role="img" aria-label="Flow: login.feature is read by bddgen, which matches steps and generates Playwright specs into .features-gen; playwright test runs them, each in a fresh browser context; step definitions call page objects, which drive the live site; results go to the list, Playwright HTML and Cucumber HTML reporters.">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+
+    <rect class="box hl" x="10" y="20" width="195" height="62" rx="8"/>
+    <text class="t" x="24" y="45">login.feature</text>
+    <text class="s" x="24" y="65">Gherkin scenarios + data</text>
+
+    <rect class="box" x="225" y="20" width="195" height="62" rx="8"/>
+    <text class="t" x="239" y="45">npx bddgen</text>
+    <text class="s" x="239" y="65">matches steps/*.js</text>
+
+    <rect class="box" x="440" y="20" width="195" height="62" rx="8"/>
+    <text class="t" x="454" y="45">.features-gen/*.spec.js</text>
+    <text class="s" x="454" y="65">generated Playwright tests</text>
+
+    <rect class="box" x="655" y="20" width="195" height="62" rx="8"/>
+    <text class="t" x="669" y="45">npx playwright test</text>
+    <text class="s" x="669" y="65">4 workers, Chromium</text>
+
+    <rect class="box" x="655" y="140" width="195" height="62" rx="8"/>
+    <text class="t" x="669" y="165">Fresh browser context</text>
+    <text class="s" x="669" y="185">per scenario; Background runs</text>
+
+    <rect class="box hl" x="440" y="140" width="195" height="62" rx="8"/>
+    <text class="t" x="454" y="165">Step definitions</text>
+    <text class="s" x="454" y="185">get page-object fixtures</text>
+
+    <rect class="box hl" x="225" y="140" width="195" height="62" rx="8"/>
+    <text class="t" x="239" y="165">Page objects</text>
+    <text class="s" x="239" y="185">LoginPage · LoggedInPage</text>
+
+    <rect class="box" x="10" y="140" width="195" height="62" rx="8"/>
+    <text class="t" x="24" y="165">Live site</text>
+    <text class="s" x="24" y="185">practicetestautomation.com</text>
+
+    <rect class="box" x="655" y="260" width="195" height="62" rx="8"/>
+    <text class="t" x="669" y="285">Reports</text>
+    <text class="s" x="669" y="305">list · Playwright HTML · Cucumber</text>
+
+    <path class="ln" d="M205 51 H221" marker-end="url(#a)"/>
+    <path class="ln" d="M420 51 H436" marker-end="url(#a)"/>
+    <path class="ln" d="M635 51 H651" marker-end="url(#a)"/>
+    <path class="ln" d="M752 82 V136" marker-end="url(#a)"/>
+    <path class="ln" d="M655 171 H639" marker-end="url(#a)"/>
+    <path class="ln" d="M440 171 H424" marker-end="url(#a)"/>
+    <path class="ln" d="M225 171 H209" marker-end="url(#a)" stroke-dasharray="4 3"/>
+    <path class="ln" d="M752 202 V256" marker-end="url(#a)"/>
+  </svg>
+  <figcaption>Blue boxes are the files you write. bddgen turns the feature into Playwright specs, and Playwright runs each scenario in its own browser context. Only the page objects talk to the site (dashed line).</figcaption>
+</figure>
+
+<!-- 6 -->
+<h2 id="run"><span class="num">6</span>How to run</h2>
+<h3>Prerequisites</h3>
+<ul>
+  <li>Node.js 20 or later, and npm. Both Playwright 1.62+ and playwright-bdd 9 need it, and <code>package.json</code> declares <code>"engines": { "node": "&gt;=20" }</code>.</li>
+  <li>Internet access to <code>practicetestautomation.com</code>.</li>
+</ul>
+
+<h3>Install (once)</h3>
+<pre><code>cd "Project Files"
+npm ci
+npx playwright install chromium
+<span class="c"># Linux / CI image: also install the browser's OS libraries</span>
+npx playwright install --with-deps chromium</code></pre>
+
+<h3>Run</h3>
+<pre><code>npm test                                                 <span class="c"># bddgen + all 8 scenarios, headless</span>
+npm run test:smoke                                       <span class="c"># @smoke only (TC-LOGIN-01, the primary scenario)</span>
+npx bddgen --tags "@TC-LOGIN-02" &amp;&amp; npx playwright test   <span class="c"># one scenario by ID tag</span>
+npx bddgen --tags "@negative" &amp;&amp; npx playwright test      <span class="c"># a group by tag</span>
+npm run test:headed                                      <span class="c"># watch the browser</span>
+npm run report                                           <span class="c"># open the Playwright HTML report</span></code></pre>
+
+<div class="callout">
+  <p><strong>Why bddgen first?</strong> Playwright runs the generated files in <code>.features-gen/</code>, not the <code>.feature</code> file directly. <code>bddgen</code> regenerates them and fails fast if any Gherkin step has no matching definition. The npm scripts always run it first.</p>
+</div>
+
+<h3>Where the output goes</h3>
+<ul>
+  <li><strong>Console:</strong> the <code>list</code> reporter prints one line per scenario, including its tags.</li>
+  <li><strong><code>playwright-report/index.html</code>:</strong> the Playwright HTML report, with each Gherkin step shown as a test step.</li>
+  <li><strong><code>cucumber-report/index.html</code>:</strong> a Cucumber-style report of features, scenarios and steps.</li>
+  <li><strong><code>test-results/</code>:</strong> a trace and screenshot for each failed scenario only. Open a trace with <code>npx playwright show-trace &lt;file&gt;.zip</code>.</li>
+</ul>
+
+<!-- 7 -->
+<h2 id="results"><span class="num">7</span>Test results after the run</h2>
+<div class="stats">
+  <div class="stat"><div class="v ok">8 / 8</div><div class="l">Scenarios passed</div></div>
+  <div class="stat"><div class="v">0</div><div class="l">Failed / flaky</div></div>
+  <div class="stat"><div class="v">11.1 s</div><div class="l">Total wall time</div></div>
+  <div class="stat"><div class="v">4</div><div class="l">Parallel workers</div></div>
+</div>
+<p><strong>Run on 2026-11-14:</strong> Windows 11, Node 22.23.5, <code>@playwright/test</code> 1.65.0, <code>playwright-bdd</code> 9.2.1, Chromium 158.0.8127.18, headless, no retries. The suite was installed from a clean <code>npm ci</code> with the committed lockfile and run against the live site.</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>ID</th><th>Scenario</th><th>Status</th><th class="num">Duration</th></tr></thead>
+  <tbody>
+    <tr><td>TC-LOGIN-01</td><td>Successful login with valid credentials</td><td class="pass">✓ Pass</td><td class="num">4.2 s</td></tr>
+    <tr><td>TC-LOGIN-02</td><td>Login is rejected: valid username, incorrect password</td><td class="pass">✓ Pass</td><td class="num">3.0 s</td></tr>
+    <tr><td>TC-LOGIN-03</td><td>Login is rejected: both fields blank</td><td class="pass">✓ Pass</td><td class="num">3.2 s</td></tr>
+    <tr><td>TC-LOGIN-04</td><td>Login is rejected: invalid username, valid password</td><td class="pass">✓ Pass</td><td class="num">3.3 s</td></tr>
+    <tr><td>TC-LOGIN-05</td><td>Login is rejected: valid username, blank password</td><td class="pass">✓ Pass</td><td class="num">1.8 s</td></tr>
+    <tr><td>TC-LOGIN-06</td><td>Password field masks the typed value</td><td class="pass">✓ Pass</td><td class="num">2.6 s</td></tr>
+    <tr><td>TC-LOGIN-07</td><td>Log out returns to the login page</td><td class="pass">✓ Pass</td><td class="num">5.3 s</td></tr>
+    <tr><td>TC-LOGIN-08</td><td>Valid login succeeds after a failed attempt</td><td class="pass">✓ Pass</td><td class="num">4.1 s</td></tr>
+  </tbody>
+</table></div>
+<p>Per-scenario durations add up to more than the total time because 4 workers ran in parallel. Each worker’s first scenario also includes browser start-up.</p>
+
+<h3>Console output</h3>
+<pre><code>Running 8 tests using 4 workers
+
+  ok 3 › Login on the Practice Test Automation site › &lt;id&gt; Login is rejected: &lt;case&gt; › TC-LOGIN-02 Login is rejected: valid username, incorrect password @login @negative @TC-LOGIN-02 (3.0s)
+  ok 2 › Login on the Practice Test Automation site › &lt;id&gt; Login is rejected: &lt;case&gt; › TC-LOGIN-04 Login is rejected: invalid username, valid password @login @negative @TC-LOGIN-04 (3.3s)
+  ok 4 › Login on the Practice Test Automation site › &lt;id&gt; Login is rejected: &lt;case&gt; › TC-LOGIN-03 Login is rejected: both fields blank @login @negative @TC-LOGIN-03 (3.2s)
+  ok 1 › Login on the Practice Test Automation site › TC-LOGIN-01 Successful login with valid credentials @login @TC-LOGIN-01 @primary @smoke @positive (4.2s)
+  ok 5 › Login on the Practice Test Automation site › &lt;id&gt; Login is rejected: &lt;case&gt; › TC-LOGIN-05 Login is rejected: valid username, blank password @login @negative @TC-LOGIN-05 (1.8s)
+  ok 6 › Login on the Practice Test Automation site › TC-LOGIN-06 Password field masks the typed value @login @TC-LOGIN-06 @security (2.6s)
+  ok 8 › Login on the Practice Test Automation site › TC-LOGIN-08 Valid login succeeds after a failed attempt @login @TC-LOGIN-08 @recovery (4.1s)
+  ok 7 › Login on the Practice Test Automation site › TC-LOGIN-07 Log out returns to the login page @login @TC-LOGIN-07 @positive (5.3s)
+
+  <span class="ok">8 passed (11.1s)</span></code></pre>
+<p class="c">The <code>[chromium] › .features-gen\features\login.feature.spec.js:NN:N</code> prefix on each line is left out here for width.</p>
+
+<h3>Extra checks</h3>
+<div class="table-wrap"><table>
+  <thead><tr><th>Check</th><th>Command</th><th>Outcome</th></tr></thead>
+  <tbody>
+    <tr><td>Run a single case by tag</td><td><code>npx bddgen --tags "@TC-LOGIN-02"</code></td><td class="pass">1 passed (only TC-LOGIN-02)</td></tr>
+    <tr><td>Suite can fail: expected message for TC-LOGIN-05 changed to a wrong value</td><td><code>npx bddgen --tags "@TC-LOGIN-05"</code></td><td><span class="bad">1 failed</span>, as intended: <code>Expected: "WRONG MESSAGE"</code> · <code>Received: "Your password is invalid!"</code>. The change was then reverted.</td></tr>
+    <tr><td>Cucumber report produced</td><td>full run</td><td class="pass"><code>cucumber-report/index.html</code> written</td></tr>
+    <tr><td>Re-run after moving the last assertions out of the steps and into the page objects</td><td><code>npm test</code></td><td class="pass">8 passed (10.7s)</td></tr>
+    <tr><td>Type check of pages and steps</td><td><code>tsc --checkJs --noEmit</code></td><td class="pass">0 errors</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 8 -->
+<h2 id="practices"><span class="num">8</span>Best practices applied</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Practice</th><th>How it shows up here</th></tr></thead>
+  <tbody>
+    <tr><td>BDD with Gherkin</td><td>Test cases are written as behaviour, in business language. The <code>.feature</code> file is both the living specification and what the automation runs.</td></tr>
+    <tr><td>Traceability by tags</td><td>Every scenario, including each Outline row, carries <code>@TC-LOGIN-0x</code> matching the manual case. Group tags (<code>@smoke</code>, <code>@negative</code>, …) select subsets.</td></tr>
+    <tr><td>Scenario Outline for data variations</td><td>The four rejected-login cases share one set of steps, with the data in <code>Examples</code> tables.</td></tr>
+    <tr><td>Reusable, declarative steps</td><td>One step with parameters (<code>I log in with username {string} and password {string}</code>) is used by seven scenarios. Given sets up state, When acts, Then asserts.</td></tr>
+    <tr><td>Page Object Model</td><td>Step definitions only call page-object methods, with no locators, selectors or <code>expect()</code>. Locators and assertions live once in <code>pages/</code>, grouped into Locators, Actions and Assertions.</td></tr>
+    <tr><td>Fixtures, not globals</td><td>Page objects are injected as Playwright fixtures, so each scenario gets fresh instances. Scenarios are independent and run in parallel.</td></tr>
+    <tr><td>User-facing locators</td><td><code>getByLabel</code> and <code>getByRole</code>. The error banner has no accessible role, so it uses its stable <code>#error</code> id.</td></tr>
+    <tr><td>Assertions that retry, no sleeps</td><td><code>toHaveURL</code>, <code>toBeVisible</code>, <code>toHaveClass</code>, <code>toHaveText</code>, <code>toHaveAttribute</code>, <code>toHaveCount</code>. There is no <code>waitForTimeout</code>.</td></tr>
+    <tr><td>Correct check for the hidden error</td><td>Waits for the <code>show</code> class before checking the text, which avoids a false pass on an element that is in the page but transparent.</td></tr>
+    <tr><td>Proven able to fail</td><td>A deliberately wrong expected value was confirmed to fail with a clear diff.</td></tr>
+    <tr><td>Reporting and debugging</td><td>Console, Playwright HTML and Cucumber HTML reports. Trace and screenshot are kept for failed scenarios only.</td></tr>
+    <tr><td>CI-ready, reproducible</td><td><code>forbidOnly</code> and one retry when <code>CI</code> is set. Exact versions are pinned with a committed lockfile and a Node engine constraint. Generated and report folders are git-ignored.</td></tr>
+  </tbody>
+</table></div>
+
+<footer>
+  Task 2 · Login UI automation (Gherkin + Playwright + POM) · Last verified 2026-11-14
+</footer>
+
+</div>
+</body>
+</html>

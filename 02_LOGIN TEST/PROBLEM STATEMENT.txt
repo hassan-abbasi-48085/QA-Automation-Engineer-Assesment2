@@ -1,0 +1,9 @@
+QA Automation Engineer Assessment
+
+Task 2: UI Automation testing.
+
+Choose any webpage of your choice.
+
+Write a manual test case with at 3 test scenarios
+
+Automate one of the above test scenario using any tool of your choice.

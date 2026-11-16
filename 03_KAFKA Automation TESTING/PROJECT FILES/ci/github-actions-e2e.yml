@@ -1,0 +1,79 @@
+# CI: lint, then run the Gherkin (Cucumber) features and Mocha specs against a real broker.
+# Same commands as the README, so a green run here means the README steps work on a clean machine.
+name: kafka-e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: kafka-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Lint and format check
+        run: npm run lint
+
+      - name: Unit tests (event contract, no broker)
+        run: npm run test:unit
+
+      - name: Gherkin dry run (every automated step has a definition, no broker)
+        run: npm run test:bdd:dry
+
+      - name: Start Kafka, create topics, start Node-RED
+        run: docker compose up -d --build --wait
+
+      - name: Show stack status
+        run: docker compose ps -a
+
+      - name: Run integration tests (Gherkin features + Mocha specs, KAFKA-P-01 and KAFKA-C-01)
+        run: npm test
+
+      - name: Upload Cucumber report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-report
+          path: reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Collect container logs
+        if: failure()
+        run: |
+          mkdir -p ci-logs
+          docker compose ps -a > ci-logs/compose-ps.txt
+          for s in kafka kafka-init node-red; do docker compose logs --no-color "$s" > "ci-logs/$s.log" 2>&1 || true; done
+
+      - name: Upload container logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs
+          path: ci-logs/
+          retention-days: 7
+
+      - name: Shut down
+        if: always()
+        run: docker compose down -v

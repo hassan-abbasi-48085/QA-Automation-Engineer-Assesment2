@@ -1,0 +1,5 @@
+node_modules/
+node-red/flows.json
+package-lock.json
+*.md
+reports/

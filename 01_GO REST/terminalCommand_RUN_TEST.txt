@@ -1,0 +1,3 @@
+npm install
+$env:GOREST_TOKEN = "gorest_4amqO5EMWQrSq9i7SrYz6k0INQlC1ZJih05RYNAaSTo2Z8J1t"
+npm test

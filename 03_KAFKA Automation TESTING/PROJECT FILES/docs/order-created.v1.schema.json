@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kafka-qa:order-created:v1",
+  "title": "OrderCreated v1",
+  "description": "Value of records on qa.orders.v1. Record key = orderId. Headers: correlation-id, event-type, schema-version. Enforced at runtime by node-red/lib/order-event.js (no schema library is used).",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "eventType",
+    "eventId",
+    "correlationId",
+    "occurredAt",
+    "orderId",
+    "customerId",
+    "currency",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "eventType": { "const": "OrderCreated" },
+    "eventId": { "type": "string", "minLength": 1, "description": "Set by the producer (UUID v4)." },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "From the X-Correlation-Id header or body.correlationId, else a generated UUID."
+    },
+    "occurredAt": { "type": "string", "format": "date-time", "description": "Set by the producer." },
+    "orderId": { "type": "string", "minLength": 1 },
+    "customerId": { "type": "string", "minLength": 1 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sku", "quantity", "unitPrice"],
+        "properties": {
+          "sku": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "unitPrice": { "type": "number", "minimum": 0 }
+        }
+      }
+    }
+  },
+  "$comment": "Downstream OrderProcessed (qa.orders.processed.v1) = { schemaVersion, eventType:'OrderProcessed', correlationId, sourceEventId, orderId, customerId, currency, itemCount (sum of quantity), totalAmount (sum of quantity*unitPrice, 2 dp), status:'PROCESSED', source:{topic,partition,offset}, processedAt }. Rejected records go to qa.orders.dlq.v1 as OrderRejected { reason: INVALID_JSON | SCHEMA_VALIDATION_FAILED, errors[], correlationId|null, source, rawValue, rejectedAt }."
+}

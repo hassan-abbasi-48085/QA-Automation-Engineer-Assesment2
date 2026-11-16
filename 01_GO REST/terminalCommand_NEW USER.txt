@@ -1,0 +1,82 @@
+$token = "gorest_4amqO5EMWQrSq9i7SrYz6k0INQlC1ZJih05RYNAaSTo2Z8J1t"
+$h = @{ Authorization = "Bearer $token" }
+$unique = Get-Date -Format "yyyyMMddHHmmssfff"
+$body = @{
+  name   = "QA Automation $unique"
+  email  = "qa.automation.$unique@example.com"
+  gender = "female"
+  status = "active"
+} | ConvertTo-Json
+
+# Create the user (POST)
+$user = Invoke-RestMethod -Method Post -Uri "https://gorest.co.in/public/v2/users" -Headers $h -ContentType "application/json" -Body $body
+$user
+
+# Get the same user by ID (GET)
+Invoke-RestMethod -Uri "https://gorest.co.in/public/v2/users/$($user.id)" -Headers $h
+
+
+**************************************************
+
+The script creates a user in GoREST with a POST request, then fetches that user by ID with a GET request.
+
+### 1. Set up the auth header
+```powershell
+$token = "gorest_..."
+$h = @{ Authorization = "Bearer $token" }
+```
+- `$token` stores your GoREST access token.
+- `@{ ... }` creates a **hashtable**, which is a set of key/value pairs. Here it holds one HTTP header: `Authorization: Bearer <token>`.
+- GoREST needs this header to create, change or delete data. Without it you get `401 Unauthorized`.
+- In double quotes, PowerShell replaces `$token` with its value.
+
+### 2. Make a unique value
+```powershell
+$unique = Get-Date -Format "yyyyMMddHHmmssfff"
+```
+- This gives the current time to the millisecond, e.g. `20261114163045123`.
+- GoREST rejects an email that is already taken (`422`). Adding this value makes the email different on every run.
+
+### 3. Build the request body
+```powershell
+$body = @{
+  name   = "QA Automation $unique"
+  email  = "qa.automation.$unique@example.com"
+  gender = "female"
+  status = "active"
+} | ConvertTo-Json
+```
+- The hashtable holds the four fields GoREST requires for a user.
+- `|` passes the hashtable into `ConvertTo-Json`, which turns it into JSON text:
+  ```json
+  { "name": "QA Automation 2026...", "email": "qa.automation.2026...@example.com", "gender": "female", "status": "active" }
+  ```
+- `gender` must be `male` or `female`, and `status` must be `active` or `inactive`. Any other value returns `422`.
+
+### 4. Create the user (POST)
+```powershell
+$user = Invoke-RestMethod -Method Post -Uri "https://gorest.co.in/public/v2/users" -Headers $h -ContentType "application/json" -Body $body
+$user
+```
+- `Invoke-RestMethod` sends the HTTP request. Each option does one thing:
+  - `-Method Post` sends a POST, which creates a new resource.
+  - `-Uri` is the users endpoint.
+  - `-Headers $h` adds the auth header.
+  - `-ContentType "application/json"` tells the server the body is JSON.
+  - `-Body $body` is the JSON from step 3.
+- GoREST replies `201 Created` with the new user, including the `id` it assigned.
+- `Invoke-RestMethod` turns the JSON reply into a PowerShell object, so `$user.id`, `$user.name` and so on work directly.
+- Writing `$user` on its own line prints that object.
+
+### 5. Read the user back (GET)
+```powershell
+Invoke-RestMethod -Uri "https://gorest.co.in/public/v2/users/$($user.id)" -Headers $h
+```
+- With no `-Method`, it sends a GET.
+- `$($user.id)` is a **subexpression**. Inside a string, `$user.id` alone would insert `$user` and then the literal text `.id`. The `$( ... )` makes PowerShell evaluate the property first, so the URL becomes `.../users/8711664`.
+- GoREST replies `200 OK` with the same user. Matching it against the POST output is the same check your Cucumber test makes.
+
+### Good to know
+- **Status codes aren't shown.** `Invoke-RestMethod` prints only the body. On a 4xx or 5xx error it throws a red error message instead. To see the code, use `Invoke-WebRequest` and check `.StatusCode`.
+- **The user is not deleted.** This script doesn't clean up, unlike `npm test`. Use the `DELETE` command from earlier to remove the user.
+- **The token is saved in plain text** in `terminalCommand_NEW USER.txt`. Don't commit that file or share it.

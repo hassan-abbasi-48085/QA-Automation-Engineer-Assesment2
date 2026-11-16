@@ -1,0 +1,199 @@
+[
+    {
+        "id": "tab_producer",
+        "type": "tab",
+        "label": "Order producer",
+        "disabled": false,
+        "info": "POST /orders -> validate OrderCreated v1 -> publish to qa.orders.v1 (key = orderId).\n\n- 202: published (acks=all), body has topic/partition/offset\n- 400: missing/invalid field, nothing published\n- 503: broker unavailable after PRODUCER_RETRIES retries"
+    },
+    {
+        "id": "p_http_in",
+        "type": "http in",
+        "z": "tab_producer",
+        "name": "POST /orders",
+        "url": "/orders",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "p_validate"
+            ]
+        ]
+    },
+    {
+        "id": "p_validate",
+        "type": "function",
+        "z": "tab_producer",
+        "name": "Validate request & build event",
+        "func": "// Validates the HTTP request body against the OrderCreated v1 input contract.\n// Output 1: valid -> msg.event is the full event to publish.\n// Output 2: invalid -> HTTP 400 response, nothing is published.\nconst orderEvent = global.get('orderEvent');\nconst input = msg.payload;\nconst headerCid = msg.req && msg.req.headers ? msg.req.headers['x-correlation-id'] : undefined;\nconst correlationId = headerCid || (input && typeof input === 'object' ? input.correlationId : undefined);\n\nconst errors = (input && typeof input === 'object')\n    ? orderEvent.validateInput(input)\n    : ['body must be a JSON object'];\n\nif (errors.length > 0) {\n    node.warn(JSON.stringify({ result: 'REJECTED', correlationId: correlationId || null, errors }));\n    msg.statusCode = 400;\n    msg.payload = {\n        status: 'REJECTED',\n        error: 'VALIDATION_FAILED',\n        details: errors,\n        correlationId: correlationId || null\n    };\n    return [null, msg];\n}\n\nmsg.event = orderEvent.buildEvent(input, correlationId);\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 100,
+        "wires": [
+            [
+                "p_publish"
+            ],
+            [
+                "p_response"
+            ]
+        ],
+        "outputLabels": [
+            "valid",
+            "invalid (400)"
+        ]
+    },
+    {
+        "id": "p_publish",
+        "type": "function",
+        "z": "tab_producer",
+        "name": "Publish to Kafka",
+        "func": "// Lazily create one long-lived Kafka producer for this node on the first request.\n// Registered here (not in On Start) because only the main sandbox exposes node.on,\n// and a 'close' listener with a done callback is awaited by Node-RED on redeploy/shutdown.\nif (!context.get('producer')) {\n    const { Kafka, Partitioners, logLevel } = global.get('kafkajs');\n    const retries = Number(env.get('PRODUCER_RETRIES') || 2);\n    const kafka = new Kafka({\n        clientId: 'nodered-order-producer',\n        brokers: (env.get('KAFKA_BROKERS') || 'kafka:19092').split(','),\n        connectionTimeout: 1000,\n        requestTimeout: 3000,\n        retry: { retries, initialRetryTime: 300, maxRetryTime: 1000, factor: 0.2, multiplier: 2 },\n        logLevel: logLevel.NOTHING\n    });\n    const producer = kafka.producer({ allowAutoTopicCreation: false, createPartitioner: Partitioners.DefaultPartitioner });\n    context.set('producer', producer);\n    context.set('retries', retries);\n    context.set('connected', false);\n    node.status({ fill: 'grey', shape: 'ring', text: 'idle' });\n\n    node.on('close', function (removed, done) {\n        producer.disconnect().catch(() => {}).then(() => done());\n    });\n}\n\n// Publishes msg.event to the orders topic, keyed by orderId.\n// Output 1: broker acknowledged (acks=all) -> HTTP 202.\n// Output 2: broker unavailable after the configured retries -> HTTP 503.\nconst producer = context.get('producer');\nconst retries = context.get('retries');\nconst topic = env.get('ORDERS_TOPIC') || 'qa.orders.v1';\nconst event = msg.event;\nconst started = Date.now();\n\n(async () => {\n    try {\n        if (!context.get('connected')) {\n            await producer.connect();\n            context.set('connected', true);\n        }\n        const [meta] = await producer.send({\n            topic,\n            acks: -1,\n            timeout: 3000,\n            messages: [{\n                key: event.orderId,\n                value: JSON.stringify(event),\n                headers: {\n                    'correlation-id': event.correlationId,\n                    'event-type': event.eventType,\n                    'schema-version': String(event.schemaVersion)\n                }\n            }]\n        });\n        node.status({ fill: 'green', shape: 'dot', text: 'published ' + event.orderId + ' @' + meta.baseOffset });\n        msg.statusCode = 202;\n        msg.payload = {\n            status: 'PUBLISHED',\n            topic,\n            partition: meta.partition,\n            offset: meta.baseOffset,\n            key: event.orderId,\n            eventId: event.eventId,\n            correlationId: event.correlationId\n        };\n        node.send([msg, null]);\n    } catch (err) {\n        context.set('connected', false);\n        const elapsedMs = Date.now() - started;\n        node.status({ fill: 'red', shape: 'ring', text: 'broker unavailable' });\n        node.warn(JSON.stringify({ result: 'PUBLISH_FAILED', correlationId: event.correlationId, error: err.message, elapsedMs }));\n        msg.statusCode = 503;\n        msg.payload = {\n            status: 'FAILED',\n            error: 'BROKER_UNAVAILABLE',\n            message: err.message,\n            retries,\n            elapsedMs,\n            correlationId: event.correlationId\n        };\n        node.send([null, msg]);\n    }\n    node.done();\n})();\nreturn;",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 80,
+        "wires": [
+            [
+                "p_response",
+                "p_debug"
+            ],
+            [
+                "p_response",
+                "p_debug"
+            ]
+        ],
+        "outputLabels": [
+            "published (202)",
+            "broker unavailable (503)"
+        ]
+    },
+    {
+        "id": "p_response",
+        "type": "http response",
+        "z": "tab_producer",
+        "name": "HTTP response",
+        "statusCode": "",
+        "headers": {
+            "content-type": "application/json"
+        },
+        "x": 880,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "p_debug",
+        "type": "debug",
+        "z": "tab_producer",
+        "name": "producer result",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 880,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "tab_consumer",
+        "type": "tab",
+        "label": "Order consumer",
+        "disabled": false,
+        "info": "Consumes qa.orders.v1 with group nodered-order-processor.\n\n- valid OrderCreated -> OrderProcessed on qa.orders.processed.v1\n- malformed/invalid -> OrderRejected on qa.orders.dlq.v1, then continues\n- offsets committed after each handled record"
+    },
+    {
+        "id": "c_start",
+        "type": "inject",
+        "z": "tab_consumer",
+        "name": "start consumer",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "",
+        "x": 140,
+        "y": 100,
+        "wires": [
+            [
+                "c_consumer"
+            ]
+        ]
+    },
+    {
+        "id": "c_consumer",
+        "type": "function",
+        "z": "tab_consumer",
+        "name": "Kafka consumer: process order",
+        "func": "// Started once by the 'start consumer' inject node; later triggers are ignored.\nif (context.get('consumer')) { return null; }\n\n// Long-lived Kafka consumer. For each record on the orders topic:\n//  - valid OrderCreated  -> OrderProcessed result published to the processed topic (output 1)\n//  - malformed / invalid -> OrderRejected record published to the DLQ topic (output 2)\n// The offset is committed only after the result/DLQ write succeeds (autoCommitThreshold: 1),\n// so a restart with the same group ID resumes after the last fully handled record.\nconst { Kafka, Partitioners, logLevel } = global.get('kafkajs');\nconst orderEvent = global.get('orderEvent');\nconst brokers = (env.get('KAFKA_BROKERS') || 'kafka:19092').split(',');\nconst inTopic = env.get('ORDERS_TOPIC') || 'qa.orders.v1';\nconst outTopic = env.get('PROCESSED_TOPIC') || 'qa.orders.processed.v1';\nconst dlqTopic = env.get('DLQ_TOPIC') || 'qa.orders.dlq.v1';\nconst groupId = env.get('CONSUMER_GROUP_ID') || 'nodered-order-processor';\n\nconst kafka = new Kafka({ clientId: 'nodered-order-consumer', brokers, logLevel: logLevel.WARN });\nconst consumer = kafka.consumer({ groupId, sessionTimeout: 10000, heartbeatInterval: 1000, maxWaitTimeInMs: 1000 });\nconst producer = kafka.producer({ allowAutoTopicCreation: false, createPartitioner: Partitioners.DefaultPartitioner });\ncontext.set('consumer', consumer);\ncontext.set('producer', producer);\n\nconst header = (message, name) => message.headers && message.headers[name] ? message.headers[name].toString() : null;\n\nasync function handle({ topic, partition, message }) {\n    const source = { topic, partition, offset: message.offset };\n    const raw = message.value ? message.value.toString('utf8') : '';\n    let event;\n    let reason = null;\n    let errors = [];\n    try {\n        event = JSON.parse(raw);\n    } catch (e) {\n        reason = 'INVALID_JSON';\n        errors = [e.message];\n    }\n    if (!reason) {\n        errors = orderEvent.validateEvent(event);\n        if (errors.length > 0) reason = 'SCHEMA_VALIDATION_FAILED';\n    }\n\n    if (!reason) {\n        const result = orderEvent.buildProcessedResult(event, source);\n        await producer.send({\n            topic: outTopic,\n            acks: -1,\n            messages: [{\n                key: event.orderId,\n                value: JSON.stringify(result),\n                headers: { 'correlation-id': event.correlationId, 'event-type': result.eventType }\n            }]\n        });\n        node.status({ fill: 'green', shape: 'dot', text: 'processed ' + event.orderId + ' @' + message.offset });\n        node.send([{ topic: outTopic, payload: result }, null]);\n        return;\n    }\n\n    const correlationId = header(message, 'correlation-id')\n        || (event && typeof event === 'object' && typeof event.correlationId === 'string' ? event.correlationId : null);\n    const rejection = {\n        schemaVersion: 1,\n        eventType: 'OrderRejected',\n        reason,\n        errors,\n        correlationId,\n        source,\n        rawValue: raw.slice(0, 10000),\n        rejectedAt: new Date().toISOString()\n    };\n    await producer.send({\n        topic: dlqTopic,\n        acks: -1,\n        messages: [{\n            key: message.key,\n            value: JSON.stringify(rejection),\n            headers: correlationId ? { 'correlation-id': correlationId, 'event-type': 'OrderRejected' } : { 'event-type': 'OrderRejected' }\n        }]\n    });\n    node.status({ fill: 'yellow', shape: 'ring', text: 'rejected @' + message.offset + ' (' + reason + ')' });\n    node.warn(JSON.stringify({ result: 'REJECTED', reason, errors, source, correlationId }));\n    node.send([null, { topic: dlqTopic, payload: rejection }]);\n}\n\n// Leave the group cleanly on redeploy/shutdown so a restarted consumer with the same\n// group ID gets the partition immediately (no wait for the session timeout).\n// A 'close' listener with a done callback is awaited by Node-RED (On Stop is not), and\n// node.on is only available in the main sandbox, which is why startup happens here.\nnode.on('close', function (removed, done) {\n    consumer.disconnect().catch(() => {})\n        .then(() => producer.disconnect()).catch(() => {})\n        .then(() => done());\n});\n\n(async () => {\n    node.status({ fill: 'grey', shape: 'ring', text: 'connecting' });\n    await producer.connect();\n    await consumer.connect();\n    await consumer.subscribe({ topics: [inTopic], fromBeginning: true });\n    consumer.on(consumer.events.GROUP_JOIN, () => node.status({ fill: 'blue', shape: 'dot', text: 'joined ' + groupId }));\n    await consumer.run({ autoCommit: true, autoCommitThreshold: 1, eachMessage: handle });\n})().catch((err) => {\n    node.status({ fill: 'red', shape: 'ring', text: 'start failed' });\n    node.error('Kafka consumer failed to start: ' + err.message);\n});\nreturn null;",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 100,
+        "wires": [
+            [
+                "c_debug_ok"
+            ],
+            [
+                "c_debug_dlq"
+            ]
+        ],
+        "outputLabels": [
+            "OrderProcessed",
+            "OrderRejected (DLQ)"
+        ]
+    },
+    {
+        "id": "c_debug_ok",
+        "type": "debug",
+        "z": "tab_consumer",
+        "name": "processed",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "c_debug_dlq",
+        "type": "debug",
+        "z": "tab_consumer",
+        "name": "rejected (DLQ)",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 650,
+        "y": 140,
+        "wires": []
+    }
+]
